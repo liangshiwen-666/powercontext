@@ -27,9 +27,6 @@ on:
 permissions:
   contents: read
 
-env:
-  PC_UPGRADE_SOURCE_SHA: ${{ inputs.source_ref || github.sha }}
-
 jobs:
   prepare:
     name: Prepare upgrade artifacts and matrix
@@ -128,6 +125,7 @@ jobs:
         if: ${{ !inputs.skip_upgrade_acceptance }}
         id: prepare
         env:
+          PC_UPGRADE_SOURCE_SHA: ${{ inputs.source_ref || github.sha }}
           RELEASE: ${{ inputs.release }}
           SELECTION: ${{ inputs.selection }}
         run: |
@@ -270,6 +268,7 @@ jobs:
         uses: ./.github/actions/setup-upgrade-oceanbase
       - name: Run this configuration exactly once
         env:
+          PC_UPGRADE_SOURCE_SHA: ${{ inputs.source_ref || github.sha }}
           CASE_INDEX: ${{ matrix.index }}
         run: >-
           uv run python scripts/parallel_upgrade_release_gate.py case
@@ -319,6 +318,8 @@ jobs:
           pattern: upgrade-case-*
           path: ${{ runner.temp }}/upgrade-case-reports/
       - name: Require all selected evidence for the exact prepared distributions
+        env:
+          PC_UPGRADE_SOURCE_SHA: ${{ inputs.source_ref || github.sha }}
         run: >-
           uv run python scripts/parallel_upgrade_release_gate.py collect
           --prepared "$RUNNER_TEMP/upgrade-prepared"
