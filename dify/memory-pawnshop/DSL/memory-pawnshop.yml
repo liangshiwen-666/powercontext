@@ -378,13 +378,9 @@ workflow:
           read: 30
           write: 30
         retry_config:
-          enabled: true
+          retry_enabled: true
           max_retries: 2
           retry_interval: 800
-          exponential_backoff:
-            enabled: false
-            multiplier: 2
-            max_interval: 5000
       height: 90
       id: '1700000000007'
       position:
@@ -565,14 +561,14 @@ workflow:
         - case_id: talk
           conditions:
           - comparison_operator: is
-            id: c165308242
+            id: c455199465
             value: talk
             varType: string
             variable_selector:
             - '1700000000021'
             - action
           - comparison_operator: is
-            id: c837595828
+            id: c397263919
             value: archive
             varType: string
             variable_selector:
@@ -583,7 +579,7 @@ workflow:
         - case_id: plant
           conditions:
           - comparison_operator: is
-            id: c781427310
+            id: c672451287
             value: plant
             varType: string
             variable_selector:
@@ -594,7 +590,7 @@ workflow:
         - case_id: settle
           conditions:
           - comparison_operator: is
-            id: c460957205
+            id: c913624986
             value: settle
             varType: string
             variable_selector:
@@ -605,21 +601,21 @@ workflow:
         - case_id: advance
           conditions:
           - comparison_operator: is
-            id: c177976742
+            id: c808958895
             value: advance
             varType: string
             variable_selector:
             - '1700000000021'
             - action
           - comparison_operator: is
-            id: c612605165
+            id: c834938704
             value: endgame
             varType: string
             variable_selector:
             - '1700000000021'
             - action
           - comparison_operator: is
-            id: c477981768
+            id: c562716741
             value: reset
             varType: string
             variable_selector:
