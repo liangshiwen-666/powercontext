@@ -916,6 +916,20 @@ def cmd_run(args: argparse.Namespace) -> int:
         "next_action": next_action,
     }
     out = _save_json(cfg.evidence_dir / "run.json", summary)
+    verification_payload = {
+        "schema": "sddctx.verification/v1",
+        "generated_at": _stamp(),
+        "patch": summary["patch"],
+        "tree_state": "after",
+        "before": {name: {**{k: record[k] for k in ("command", "exit_code", "counts", "duration_s")},
+                          "log_path": _rel(cfg, record["log_path"])}
+                   for name, record in before.items()},
+        "after": {name: {**{k: record[k] for k in ("command", "exit_code", "counts", "duration_s")},
+                         "log_path": _rel(cfg, record["log_path"])}
+                  for name, record in after.items()},
+        "verdict": verdict,
+    }
+    _save_json(cfg.evidence_dir / "verification.json", verification_payload)
     if args.live:
         _save_json(cfg.evidence_dir / "run-live-generation.json", summary)
     print(f"[5/6] verification {'PASSED' if verdict['ok'] else 'FAILED'}; PowerContext outcome written "

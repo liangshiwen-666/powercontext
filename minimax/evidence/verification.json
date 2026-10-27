@@ -1,0 +1,96 @@
+{
+  "schema": "sddctx.verification/v1",
+  "generated_at": "20261027T145247Z",
+  "patch": {
+    "path": "patches/0001-orders-filters.patch",
+    "sha256": "71de0a956ba7a67c1d9c923ff50e3081c3d4d04cbe7aa35c27ba28c63a0f1f78"
+  },
+  "tree_state": "after",
+  "before": {
+    "target": {
+      "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/target -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/before-target.junit.xml",
+      "exit_code": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 6,
+        "errors": 0,
+        "skipped": 0
+      },
+      "duration_s": 1.632,
+      "log_path": "evidence/logs/before-target.json"
+    },
+    "regression": {
+      "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/regression -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/before-regression.junit.xml",
+      "exit_code": 0,
+      "counts": {
+        "passed": 18,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "duration_s": 1.591,
+      "log_path": "evidence/logs/before-regression.json"
+    }
+  },
+  "after": {
+    "target": {
+      "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/target -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-target.junit.xml",
+      "exit_code": 0,
+      "counts": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "duration_s": 1.201,
+      "log_path": "evidence/logs/after-target.json"
+    },
+    "regression": {
+      "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/regression -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-regression.junit.xml",
+      "exit_code": 0,
+      "counts": {
+        "passed": 18,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "duration_s": 1.815,
+      "log_path": "evidence/logs/after-regression.json"
+    }
+  },
+  "verdict": {
+    "ok": true,
+    "checks": [
+      {
+        "check": "target fails before the change",
+        "ok": true,
+        "detail": "failing target tests before = 6, exit=1"
+      },
+      {
+        "check": "expected number of failing target tests",
+        "ok": true,
+        "detail": "expected 6, observed 6"
+      },
+      {
+        "check": "regression passes before the change",
+        "ok": true,
+        "detail": "exit=0, failed=0"
+      },
+      {
+        "check": "target passes after the change",
+        "ok": true,
+        "detail": "exit=0, passed=6"
+      },
+      {
+        "check": "regression passes after the change",
+        "ok": true,
+        "detail": "exit=0, passed=18"
+      },
+      {
+        "check": "same test files were executed",
+        "ok": true,
+        "detail": "target suite collected the same number of tests before and after"
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 {
   "schema": "sddctx.run/v1",
-  "generated_at": "20261027T144534Z",
+  "generated_at": "20261027T145246Z",
   "task": {
     "id": "orders-filters.task",
     "title": "任务：为订单查询接口增加筛选能力（orders-filters-v2）",
@@ -19,7 +19,7 @@
   },
   "seekdb": "seekdb server 127.0.0.1:2881/sddctx",
   "code_version": {
-    "base_git_head": "d8155dfde47fd54bed7a3d499aa789adcc85ba5a",
+    "base_git_head": "1266f14fd9de1a9b07f10dcf0f12363d3c07ce52",
     "demo_tree_state": "after",
     "patch_sha256": "71de0a956ba7a67c1d9c923ff50e3081c3d4d04cbe7aa35c27ba28c63a0f1f78",
     "suite_files": [
@@ -34,9 +34,9 @@
       "code": 15,
       "test": 24
     },
-    "archive": ".data/ingest/ingest-20261027T144519Z.jsonl"
+    "archive": ".data/ingest/ingest-20261027T145232Z.jsonl"
   },
-  "context_pack": "evidence/context/orders-filters.task-20261027T144523Z.json",
+  "context_pack": "evidence/context/orders-filters.task-20261027T145236Z.json",
   "context_sha256": "bf2be9963af6ad3d9e04ec73c578e1a565a6017abdcf27b6feaa64fb15cb05b4",
   "patch": {
     "path": "patches/0001-orders-filters.patch",
@@ -46,8 +46,8 @@
     "mode": "replay",
     "patch_meta": "patches/0001-orders-filters.meta.json"
   },
-  "db_evidence": "records/db/seekdb-queries-run-20261027T144519Z.json",
-  "state_evidence": "records/powercontext/state-final-20261027T144534Z.json",
+  "db_evidence": "records/db/seekdb-queries-run-20261027T145232Z.json",
+  "state_evidence": "records/powercontext/state-final-20261027T145246Z.json",
   "before": {
     "target": {
       "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/target -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/before-target.junit.xml",
@@ -135,12 +135,12 @@
     "db": ".data/powercontext/pc.db",
     "scope_key": "sddctx-orders-filters-v1",
     "outcome": {
-      "scope_id": "scp_3cj6w0n9n9t50tps8cn3247naa",
+      "scope_id": "scp_1bjx414pqztp6fs26mbn3eygrq",
       "contract": {
         "kind": "work-contract",
         "source_ref": {
           "source_type": "content",
-          "source_id": "pcstore-contract-1793112332858534103"
+          "source_id": "pcstore-contract-1793112765416521971"
         },
         "position": 11,
         "content_digest": "sha256:c4a4e39ed514cdef95ed2edcdf06124eace97a273928718caa9f33e2c9d4768e"
@@ -163,7 +163,7 @@
           "kind": "handoff-receipt",
           "source_ref": {
             "source_type": "content",
-            "source_id": "pcstore-ack-1793112332858534103"
+            "source_id": "pcstore-ack-1793112765416521971"
           },
           "position": 13,
           "content_digest": "sha256:0bc272579d549b797d3b0b918a283eed4b247785861095b535cfb79cdf83508e"
@@ -173,10 +173,10 @@
         "kind": "task-outcome",
         "source_ref": {
           "source_type": "content",
-          "source_id": "pcstore-outcome-1793112332858534103"
+          "source_id": "pcstore-outcome-1793112765416521971"
         },
         "position": 14,
-        "content_digest": "sha256:1debff5eaa6e1b55707f638d450324cde482b1acbb72665981d1a623199fc53f"
+        "content_digest": "sha256:79d170a56dd6ce0f4c2a18a3254deb1829828c656b3ce024785af4f2fd7e61c6"
       },
       "continuity": {
         "total_event_count": 4,
@@ -189,7 +189,7 @@
           "outcome_state": "covered",
           "active_receipt_ref": {
             "source_type": "content",
-            "source_id": "pcstore-ack-1793112332858534103"
+            "source_id": "pcstore-ack-1793112765416521971"
           },
           "handoff_result_covered": true
         },
@@ -199,7 +199,7 @@
             "kind": "work-contract",
             "source_ref": {
               "source_type": "content",
-              "source_id": "pcstore-contract-1793112332858534103"
+              "source_id": "pcstore-contract-1793112765416521971"
             },
             "record_schema": "powercontext.work-contract.v1",
             "status": "delegated",
@@ -214,7 +214,7 @@
             "kind": "handoff-boundary",
             "source_ref": {
               "source_type": "content",
-              "source_id": "pcstore-boundary-1793112332858534103"
+              "source_id": "pcstore-boundary-1793112765416521971"
             },
             "record_schema": "powercontext.current-work-handoff.v1",
             "status": "complete",
@@ -229,7 +229,7 @@
             "kind": "handoff-receipt",
             "source_ref": {
               "source_type": "content",
-              "source_id": "pcstore-ack-1793112332858534103"
+              "source_id": "pcstore-ack-1793112765416521971"
             },
             "record_schema": "powercontext.handoff-receipt.v1",
             "status": "accepted",
@@ -252,7 +252,7 @@
             "kind": "task-outcome",
             "source_ref": {
               "source_type": "content",
-              "source_id": "pcstore-outcome-1793112332858534103"
+              "source_id": "pcstore-outcome-1793112765416521971"
             },
             "record_schema": "powercontext.task-outcome.v1",
             "status": "succeeded",
@@ -261,7 +261,7 @@
             "selected_revision": null,
             "handoff_receipt_ref": {
               "source_type": "content",
-              "source_id": "pcstore-ack-1793112332858534103"
+              "source_id": "pcstore-ack-1793112765416521971"
             },
             "receiver_checks": null
           }
@@ -280,7 +280,7 @@
     "text": "如需继续：更新规格后重新 ingest，并重新生成上下文",
     "ref": {
       "family": "atomic-memory",
-      "artifact_id": "art_df02a24815f04183b9dfd01a3d112b1c",
+      "artifact_id": "art_d7eed6d8818a432daa7d7c18b26214dc",
       "revision": 1
     },
     "state": "active"
