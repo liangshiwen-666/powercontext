@@ -42,24 +42,13 @@ def _pick_card(intent, query):
 
 def main(state: str, intent_json: str, scopes_body: str, query: str) -> dict:
     st = _load(state)
-    if not st.get("scopes"):
-        try:
-            data = json.loads(scopes_body)
-            for item in (data.get("items") or []):
-                title = item.get("title", "")
-                for g in GUESTS:
-                    if g["name"] in title:
-                        st["scopes"][g["id"]] = item.get("scope_id", "")
-                if ("档案" in title) or ("archive" in title.lower()):
-                    st["scopes"]["archive"] = item.get("scope_id", "")
-        except Exception:
-            pass
+    _resolve_scopes(st, scopes_body)
     if not st.get("current"):
         _setup_guest(st, 0)
     intent = _parse_json(intent_json)
     action = _norm_action(intent.get("action"), query)
     phase = st.get("phase")
-    if st.get("turn", 0) == 0:
+    if phase == "opening":
         action = "advance"
     if phase == "endgame" and action != "reset":
         action = "endgame"

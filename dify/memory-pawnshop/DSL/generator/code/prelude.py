@@ -15,6 +15,25 @@ PULLBACK = {
 }
 
 
+def _resolve_scopes(st, scopes_body):
+    if st.get("scopes"):
+        return st
+    try:
+        data = json.loads(scopes_body) if isinstance(scopes_body, str) else (scopes_body or {})
+        if isinstance(data, str):
+            data = json.loads(data)
+        for item in (data.get("items") or []):
+            title = item.get("title", "")
+            for g in GUESTS:
+                if g["name"] in title:
+                    st["scopes"][g["id"]] = item.get("scope_id", "")
+            if ("档案" in title) or ("archive" in title.lower()):
+                st["scopes"]["archive"] = item.get("scope_id", "")
+    except Exception:
+        pass
+    return st
+
+
 def _reset():
     return {
         "started": True, "guest_idx": 0, "round": 0, "phase": "opening",
@@ -113,17 +132,31 @@ def _hits(body):
 
 def _parse_json(text):
     s = (text or "").strip()
+    # deepseek 推理插件可能返回 <think>...</think> 前缀，取最后一个 </think> 之后的内容
+    if "</think>" in s:
+        s = s.split("</think>", 1)[1]
+    s = s.strip()
     if s.startswith("```"):
         s = s.strip("`")
         if s.startswith("json"):
             s = s[4:]
-    i, j = s.find("{"), s.rfind("}")
-    if i >= 0 and j > i:
-        s = s[i:j + 1]
-    try:
-        return json.loads(s)
-    except Exception:
+    s = s.strip()
+    start = s.find("{")
+    if start == -1:
         return {}
+    depth = 0
+    for i in range(start, len(s)):
+        ch = s[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(s[start:i + 1])
+                except Exception:
+                    return {}
+    return {}
 
 
 def _apply_judge(st, judge):
@@ -167,7 +200,7 @@ def _archive_parts(body):
     for h in hits[1:3]:
         t = h["memory"]["text"]
         i = t.find("｜")
-        others.append(t[2:i].strip() if i > 0 else t[:10])
+        others.append(t[1:i].strip() if i > 0 else t[:10])
     extra = ("\n▸ 另有相关：" + "、".join(others)) if others else ""
     return main, extra
 

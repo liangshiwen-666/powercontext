@@ -35,7 +35,6 @@ def main(state: str) -> dict:
     return {
         "state": _dump(st),
         "answer_text": "\n".join(parts),
-        "ticket_memory": mem,
         "remember_json": json.dumps({"scope_id": scope, "kind": "ticket", "text": mem}, ensure_ascii=False),
         "scope_id": scope,
         "ticket_no": no,

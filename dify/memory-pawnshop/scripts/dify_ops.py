@@ -9,6 +9,7 @@
   python3 dify_ops.py chat --token app-xxx --out ../evidence/dify_run.json
 """
 import argparse
+import base64
 import json
 import os
 import sys
@@ -32,6 +33,8 @@ class Client:
         h = {"User-Agent": "memory-pawnshop-cli/1.0"}
         if self.cookies:
             h["Cookie"] = "; ".join(f"{k}={v}" for k, v in self.cookies.items())
+            if "csrf_token" in self.cookies:
+                h["X-CSRF-Token"] = self.cookies["csrf_token"]
         if self.token:
             h["Authorization"] = f"Bearer {self.token}"
         h.update(headers or {})
@@ -68,18 +71,23 @@ def json_or_none(v):
 
 
 def setup_and_login(c, email, password, name="Judge"):
-    st, body = c.console("GET", "/init")
-    print("init:", st, str(body)[:120])
-    if not (isinstance(body, dict) and body.get("status") in ("finished", "setup_finished")):
+    st, body = c.console("GET", "/setup")
+    print("setup status:", st, str(body)[:120])
+    finished = isinstance(body, dict) and body.get("step") == "finished"
+    if not finished:
         st, body = c.console("POST", "/setup", {"email": email, "name": name, "password": password})
         print("setup:", st, str(body)[:200])
-    st, body = c.console("POST", "/login", {"email": email, "password": password, "remember_me": True})
+    # 登录接口的前端会做 base64 混淆（FieldEncryption.decrypt_field 只是 base64 解码）
+    st, body = c.console("POST", "/login",
+                         {"email": email, "password": base64.b64encode(password.encode()).decode(),
+                          "remember_me": True})
     print("login:", st, str(body)[:150])
     tok = None
     if isinstance(body, dict):
         tok = (body.get("data") or {}).get("access_token") or body.get("access_token")
     if not tok:
-        raise SystemExit("login failed; check credentials")
+        # 1.18 把 access_token 放在 cookie 里，靠 cookie 会话鉴权即可继续
+        tok = c.cookies.get("access_token") or ""
     c.token = tok
     return tok
 
@@ -174,11 +182,10 @@ def chat(c, token, query, conversation_id="", user="judge"):
 
 
 def run_demo(dsl_path, out_path, token=None):
-    with open(dsl_path, encoding="utf-8") as f:
-        dsl = f.read()
     turn_inputs = ["开门", "查 2003 年卫生院", "追问：你那天在袜厂加班到几点", "上酒 回甘 A", "开票", "开门"]
     if token is None:
         raise SystemExit("no app token")
+    c = Client(os.environ.get("DIFY_BASE", "http://127.0.0.1:3000"))
     conv = ""
     log = []
     for q in turn_inputs:

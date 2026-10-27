@@ -1,0 +1,381 @@
+{
+  "base": "http://127.0.0.1:17429",
+  "scopes": {
+    "archive": {
+      "scope_id": "scp_18yg1es3qhncznfqzct6e33vvp",
+      "title": "当铺档案柜·雾河卷",
+      "summary": "雾河镇档案（镇志/账本/讣告/传闻），只读参考，供玩家翻档案核对事实。",
+      "case_id": null
+    },
+    "ayuan": {
+      "scope_id": "scp_536x1and54f95kjvnqvwk2hx41",
+      "title": "当铺客人·阿沅",
+      "summary": "阿沅（案号 C01）对母亲去世那件事的记忆。她把「我到了却没进去」改写成「我没回来」，说了二十三年。",
+      "case_id": "C01"
+    },
+    "laozhou": {
+      "scope_id": "scp_7xz8ap2jex83c6p658p5c8x4jg",
+      "title": "当铺客人·老周",
+      "summary": "老周（案号 C02）对女儿落水那天的记忆。他认定自己迟到二十分钟害死了女儿，用十年给自己造了一个能扛的罪名。",
+      "case_id": "C02"
+    },
+    "baitang": {
+      "scope_id": "scp_61zzsnpgqsnmev50dnk6ckcv99",
+      "title": "当铺客人·白棠",
+      "summary": "白棠（案号 C03）对丈夫之死的记忆。她每月十五来当同一段雾，当簿记着二百三十九张同款当票。",
+      "case_id": "C03"
+    }
+  },
+  "archives": [
+    {
+      "id": "Z-01",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_0bd18d943b89404e8f15fea29e73a1f5",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "Z-02",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_3b8d16c5e460491480027553dfe269bc",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "Z-03",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_4ac4170ec6494c04b86464b9d9120d0c",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "Z-04",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_9721e091c5f44a0a86e3a98f02c7fad8",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "Z-05",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_2a3bbca2a4144d99828f29f356d03eeb",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "Z-06",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_8fc12de6d22d4c2c8e43bfd507bcea37",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "Z-07",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_6f929c08a9c34c0aabb845f74f7648b9",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "A-01",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_de54db76a927464daf868981b6508f7f",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "A-02",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_e8f601fbbc0d4efb82525b7eb8349af2",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "A-03",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_2b49ec4ffd5e4b37994267c52e9ad986",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "A-04",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_40a853e37ebc48f0b4b6b2e23fa37086",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "A-05",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_af7e37a936e949bfb81520587188c19c",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "A-06",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_10d96fe233494b268ff3d9279d3f2bf3",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "A-07",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_4b231f3942454bdfa55815706799e024",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "A-08",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_474a23c695144128afd2071d39ef7a1c",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "F-01",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_9eff3e4259264624b8462aaceeb8ab00",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "F-02",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_025b0d0f7c6d4250acfabed86197f4d5",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "F-03",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_2fbb87b2f1f84852a7b39a53271790cc",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "F-04",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_ac827177083942b8a55bb16f310358cd",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "F-05",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_b99937031c0e488eaf17ef8f216eb488",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "R-01",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_58b47d5d82eb442184933b68b9369fbf",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "R-02",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_fb053e307b084b8d81ba71770682a4ac",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "R-03",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_5ccca684c41c493d813930eab90e5c49",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "R-04",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_7fea5da3cebb423cac0b17ec2a79b849",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "R-05",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_a12065c7f6374326b9b8912969fe389a",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "R-06",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_317060f680d04cc19fecd8b643ceb30f",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "R-07",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_2dec6b68738f4ea4b5417dff38bca2c6",
+        "revision": 1
+      },
+      "kind": "archive"
+    },
+    {
+      "id": "R-08",
+      "artifact": {
+        "family": "atomic-memory",
+        "artifact_id": "art_07f2f626b53f4e18a36ef9a6dcb253a6",
+        "revision": 1
+      },
+      "kind": "archive"
+    }
+  ],
+  "npc_memories": {
+    "ayuan": [
+      {
+        "kind": "planted",
+        "text": "那年我在城南袜厂加班，厂里不放人，我到底没能赶回去见娘最后一面。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_68076fd301cb4846bde2e131e9dde9c6",
+          "revision": 1
+        }
+      },
+      {
+        "kind": "planted",
+        "text": "娘临走前说的是「别回来」，她恨我没回来，所以我不敢进那条巷子。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_fbc551b76f8047caa494920b6c58f72e",
+          "revision": 1
+        }
+      },
+      {
+        "kind": "doubt",
+        "text": "我好像梦见过卫生院三楼的灯，亮着，可我记不清那是不是我自己去过。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_8c5fa1a658ff4a3d85429c4f9c5e3f8e",
+          "revision": 1
+        }
+      }
+    ],
+    "laozhou": [
+      {
+        "kind": "planted",
+        "text": "十七号下午我收工晚到渡口二十分钟，船准时开了，我没赶上。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_77a03067a48e40d599fcf87d30f90952",
+          "revision": 1
+        }
+      },
+      {
+        "kind": "planted",
+        "text": "是我算错了时间，我晚了二十分钟，这二十分钟是我欠小满的。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_de966abf55bf48c1a369ce451bc6ab90",
+          "revision": 1
+        }
+      },
+      {
+        "kind": "doubt",
+        "text": "那天的雾大得看不见水，我记得到码头的时候，一个人也没有。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_b7ff3a57d3784eb49711808590f8956f",
+          "revision": 1
+        }
+      }
+    ],
+    "baitang": [
+      {
+        "kind": "planted",
+        "text": "我是第一次来这间当铺，今晚头一回，把那年二月十四的雾当掉。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_c0c7b88c4bd0466ca47a6d954c75452d",
+          "revision": 1
+        }
+      },
+      {
+        "kind": "planted",
+        "text": "见山每回跑船回来，都先到照相馆门口站一会儿，等我把灯调好。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_3dad8cad7ed04533ae1e894c872d2b34",
+          "revision": 1
+        }
+      },
+      {
+        "kind": "doubt",
+        "text": "柜台后头那盏灯我好像在夜里见过很多次，二十年都没换过。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_bb3d72f10b2843d79c81ccdebc416eb7",
+          "revision": 1
+        }
+      },
+      {
+        "kind": "doubt",
+        "text": "这条街的雾我熟得闭着眼都能走，可我总觉得自己在别处等过一个人。",
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_ffd781e3c28042cd91045aee7767d03c",
+          "revision": 1
+        }
+      }
+    ]
+  }
+}

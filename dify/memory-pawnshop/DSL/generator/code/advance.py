@@ -1,5 +1,6 @@
-def main(state: str, query: str) -> dict:
+def main(state: str, query: str, scopes_body: str) -> dict:
     st = _load(state)
+    _resolve_scopes(st, scopes_body)
     q = query or ""
     if st.get("phase") == "endgame":
         if any(w in q for w in ("重开", "重新开始", "新游戏", "重玩")):
@@ -20,10 +21,9 @@ def main(state: str, query: str) -> dict:
                  _menu(st),
                  _status(st)]
         return {"state": _dump(st), "answer_text": "\n".join(parts)}
-    # opening of the whole game
-    g = _guest(st)
-    st["phase"] = "explore"
-    st["round"] = 0
+    # 开场 / 兜底推进：把当前客人重置为一巡开始并打印开场
+    g = _setup_guest(st, st.get("guest_idx", 0))
+    st["turn"] = 1
     parts = ["【雾河街十三号 · 灯下记忆当铺】",
              "三更天，雾从西岭下来。当票簿第 240 页空着。",
              "（门帘响了一声）",

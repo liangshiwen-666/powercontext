@@ -11,7 +11,7 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "memory-pawnshop.
 
 PC = os.environ.get("PC_BASE_URL", "http://powercontext:8000")
 MODEL_PROVIDER = os.environ.get("MODEL_PROVIDER", "langgenius/deepseek/deepseek")
-MODEL_NAME = os.environ.get("MODEL_NAME", "deepseek-chat")
+MODEL_NAME = os.environ.get("MODEL_NAME", "deepseek-flash")
 TODAY = os.environ.get("GAME_DATE", "20261027")
 
 with open(os.path.join(ROOT, "data", "guests.json"), encoding="utf-8") as f:
@@ -105,8 +105,7 @@ NODES.append(node("http_scopes", "http-request", {
     "params": "",
     "body": {"type": "none", "data": ""},
     "timeout": {"connect": 10, "read": 30, "write": 30},
-    "retry_config": {"enabled": True, "max_retries": 2, "retry_interval": 800,
-                     "exponential_backoff": {"enabled": False, "multiplier": 2, "max_interval": 5000}},
+    "retry_config": {"retry_enabled": True, "max_retries": 2, "retry_interval": 800},
 }, 280, 380))
 
 # ---------------------------------------------------------------- intent LLM
@@ -358,6 +357,7 @@ NODES.append(node("code_advance", "code", {
     "variables": [
         {"value_selector": ["conversation", "state"], "variable": "state"},
         {"value_selector": ["sys", "query"], "variable": "query"},
+        {"value_selector": [NID["http_scopes"], "body"], "variable": "scopes_body"},
     ],
 }, 1240, 980))
 
@@ -468,6 +468,22 @@ try:
 except ImportError:
     sys.stderr.write("PyYAML missing; install with: pip install pyyaml (or set PYTHONPATH)\n")
     raise
+
+
+def _fix_refs(obj):
+    """把字符串里的 {{#friendly.var#}} 替换成 {{#<node_id>.var#}}，使变量引用指向真实节点 id。"""
+    if isinstance(obj, str):
+        for k, nid in NID.items():
+            obj = obj.replace("{{#" + k + ".", "{{#" + nid + ".")
+        return obj
+    if isinstance(obj, dict):
+        return {kk: _fix_refs(vv) for kk, vv in obj.items()}
+    if isinstance(obj, list):
+        return [_fix_refs(x) for x in obj]
+    return obj
+
+
+DSL = _fix_refs(DSL)
 
 with open(OUT, "w", encoding="utf-8") as f:
     yaml.safe_dump(DSL, f, allow_unicode=True, sort_keys=False, width=1000)

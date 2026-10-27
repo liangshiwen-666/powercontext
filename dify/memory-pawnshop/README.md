@@ -30,7 +30,7 @@
 | **Dify** | 1.18.0（Docker Compose 自托管） | Chatflow 承担核心流程编排：意图解析 LLM → IF/ELSE 分流 → HTTP 调用记忆库/档案柜 → 客人台词与判定 LLM → 开票 Code 节点 → 会话变量赋值 → Answer；共 26 个节点 | DSL 文件 `DSL/memory-pawnshop.yml`；Dify 运行日志/节点执行记录 |
 | **PowerContext** | 1.4.1（PyPI，HTTP API） | 记忆语义层：每位客人一个 scope（`npc/ayuan` 等），当铺档案一个只读 scope（`archive`）；负责写入、混合检索召回、PreparedContext、`revision`（记忆被复述改写）、`inactive`（遗忘/抹除）、跨会话保留 | 当票上的 `scope`/`memory_id`/`R{revision}`；`scripts/pc_smoke.py` 输出的读写记录 |
 | **seekdb** | 1.4.x（嵌入式） | PowerContext 的**存储与检索引擎**（`POWERCONTEXT_SERVER_DATABASE_KIND=seekdb`）：所有记忆与档案的持久化、全文索引与向量索引都在 seekdb 里 | PowerContext 容器内 `/data/seekdb` 数据目录；`/health/ready` 的 `database=ready`；检索命中 `matched_by:["text","vector"]` |
-| DeepSeek API | `deepseek-chat` | 意图解析、客人台词、判定 JSON | Dify 模型配置 |
+| DeepSeek API | `deepseek-flash` | 意图解析、客人台词、判定 JSON | Dify 模型配置 |
 | SiliconFlow `BAAI/bge-m3` | 1024 维 | PowerContext 的查询/索引向量（记忆与档案的语义召回） | `scripts/pc_smoke.py` 的 `matched_by` 含 `vector` |
 
 > 设计要点：**「档案」和「记忆」用的是同一套 PowerContext API、不同的 scope**——档案是「可核对的过去」，记忆是「客人相信的过去」，两者在同一个记忆系统里对照，这正是玩法本身。
@@ -120,7 +120,7 @@ Dify 控制台（`http://localhost:3000`）→ 首次进入先注册管理员账
 
 在 Dify 控制台 → 设置 → 模型供应商：
 
-1. **DeepSeek**：填 DeepSeek API Key；模型 `deepseek-chat`（用于意图解析、客人台词、判定）。
+1. **DeepSeek**：填 DeepSeek API Key；模型用 **`deepseek-flash`**（本作品 DSL 已内置该模型名；该插件在 Dify 1.18 里提供的预置模型为 deepseek-flash / deepseek-v4-flash 等，无 deepseek-chat）。
 2. **SiliconFlow（硅基流动）**：填 SiliconFlow API Key；embedding 模型 `BAAI/bge-m3`（用于 Dify 的 embedding 能力；本作品的知识库未使用，但该供应商配置会让模型列表完整）。
 
 > 说明：本作品**不使用 Dify 知识库**。世界档案存储在 PowerContext 的 `archive` scope 中，由 HTTP 节点检索——这样部署只需两个服务，也避免了「知识库向量库」这一层额外依赖。若你希望改成 Dify 知识库形态，可把 `data/archives.md` 导入知识库并替换 `HTTP·档案检索` 节点为知识检索节点。
