@@ -5,6 +5,22 @@
 
 ---
 
+## 零、仓库 / 上游 / 分支（提交信息）
+
+| 项 | 值 |
+| --- | --- |
+| 上游仓库（官方） | <https://github.com/oceanbase/powercontext> |
+| 官方基线分支 | `2026-competition-ecosystem` |
+| 官方基线 commit | `d647275c308e09b7b623f322a26f5c4e85734fb0` |
+| 本团队仓库（fork） | <https://github.com/liangshiwen-666/powercontext-fork> |
+| **提交分支** | **`2026-competition-ecosystem`** |
+| 与官方基线关系 | `behind_by = 0`，`merge_base = d647275`（直接基于官方基线开发） |
+| 本作品目录 | `dify/memory-pawnshop/` |
+
+> 填表用的完整信息（含 commit id 与文件清单）见同目录 [`SUBMISSION.md`](SUBMISSION.md)。
+
+---
+
 ## 一、这是个什么游戏
 
 **雾河镇有家当铺，当的不是金银，是你夜里想起来会疼的那一件。**
