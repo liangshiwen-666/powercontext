@@ -1,0 +1,1 @@
+{"error":{"code":"invalid_request","message":"The request violates the API contract.","details":{"errors":[{"type":"union_tag_not_found","loc":["body","selection"],"msg":"Unable to extract tag using discriminator 'mode'"}]}}}

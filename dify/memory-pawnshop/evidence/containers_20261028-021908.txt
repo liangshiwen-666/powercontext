@@ -1,0 +1,12 @@
+NAME                     IMAGE                                        COMMAND                  SERVICE         CREATED          STATUS                    PORTS
+docker-api-1             langgenius/dify-api:1.18.0                   "/bin/bash /entrypoi…"   api             51 minutes ago   Up 26 minutes (healthy)   5001/tcp
+docker-db_postgres-1     postgres:15-alpine                           "docker-entrypoint.s…"   db_postgres     57 minutes ago   Up 57 minutes (healthy)   5432/tcp
+docker-nginx-1           nginx:latest                                 "sh -c 'cp /docker-e…"   nginx           51 minutes ago   Up 51 minutes             0.0.0.0:443->443/tcp, [::]:443->443/tcp, 0.0.0.0:3000->80/tcp, [::]:3000->80/tcp
+docker-plugin_daemon-1   langgenius/dify-plugin-daemon:0.6.10-local   "/usr/bin/tini -g --…"   plugin_daemon   51 minutes ago   Up 51 minutes             0.0.0.0:5003->5003/tcp, [::]:5003->5003/tcp
+docker-redis-1           redis:6-alpine                               "docker-entrypoint.s…"   redis           57 minutes ago   Up 57 minutes (healthy)   6379/tcp
+docker-sandbox-1         langgenius/dify-sandbox:0.2.15               "/entrypoint.sh"         sandbox         51 minutes ago   Up 51 minutes (healthy)   
+docker-ssrf_proxy-1      ubuntu/squid:latest                          "sh -c 'cp /docker-e…"   ssrf_proxy      51 minutes ago   Up 51 minutes             3128/tcp
+docker-web-1             langgenius/dify-web:1.18.0                   "/bin/sh ./entrypoin…"   web             51 minutes ago   Up 51 minutes             3000/tcp
+docker-worker-1          langgenius/dify-api:1.18.0                   "/bin/bash /entrypoi…"   worker          51 minutes ago   Up 26 minutes             5001/tcp
+docker-worker_beat-1     langgenius/dify-api:1.18.0                   "/bin/bash /entrypoi…"   worker_beat     51 minutes ago   Up 51 minutes             5001/tcp
+powercontext             memory-pawnshop/powercontext:1.4.1           "/entrypoint.sh"         powercontext    2 hours ago      Up 2 hours (healthy)      127.0.0.1:17429->8000/tcp
