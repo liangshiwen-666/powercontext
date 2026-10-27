@@ -1,0 +1,45 @@
+{
+  "schema": "sddctx.patch-generation/v1",
+  "generated_at": "20261027T142349Z",
+  "generation_mode": "live",
+  "model": "MiniMax-M3.1-Flash",
+  "endpoint": "https://api.minimax.cn/v1/chat/completions",
+  "context_pack": "evidence/context/orders-filters.task-20261027T142328Z.json",
+  "context_sha256": "bf2be9963af6ad3d9e04ec73c578e1a565a6017abdcf27b6feaa64fb15cb05b4",
+  "patch_path": "patches/0001-orders-filters.patch",
+  "patch_sha256": "9c397d810af667938a8ad0e26c88abe7f221c808e797b987df69e0cc48720679",
+  "attempts": [
+    {
+      "attempt": 1,
+      "response_sha256": "cc7edcbd69d9b6cb872b3e4c85bf3a1eebdf04e56d53c06adf92a8429b6f510b",
+      "usage": {
+        "total_tokens": 10528,
+        "total_characters": 0,
+        "prompt_tokens": 6603,
+        "completion_tokens": 3925,
+        "completion_tokens_details": {
+          "reasoning_tokens": 1556
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 6528
+        }
+      },
+      "finish_reason": "stop",
+      "mode": "file-writes",
+      "edited_files": [
+        "app/routes.py",
+        "app/service.py"
+      ],
+      "rejected_paths": [],
+      "applied": true,
+      "target_counts": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "patch_sha256": "9c397d810af667938a8ad0e26c88abe7f221c808e797b987df69e0cc48720679",
+      "record": "records/minimax/20261027T142346872087Z-orders-filters-attempt1.json"
+    }
+  ]
+}

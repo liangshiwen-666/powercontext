@@ -1,0 +1,17 @@
+# runtime data / local state (never committed)
+.data/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# local secrets
+.env
+.env.*
+!.env.example
+
+# pytest
+.pytest_cache/
+
+# temporary working copies created by the verifier
+evidence/tmp/

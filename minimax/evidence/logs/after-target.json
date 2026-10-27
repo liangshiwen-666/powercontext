@@ -1,0 +1,20 @@
+{
+  "schema": "sddctx.test-log/v1",
+  "suite": "tests/target",
+  "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/target -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-target.junit.xml",
+  "cwd": "/mnt/d/oceanbase/work-eco/repo/minimax/demo",
+  "started_at": "2026-10-27T14:24:25Z",
+  "duration_s": 1.848,
+  "timed_out": false,
+  "exit_code": 0,
+  "counts": {
+    "passed": 6,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "junit": "/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-target.junit.xml",
+  "stdout": "......                                                                   [100%]\n6 passed in 0.47s\n",
+  "stdout_sha256": "2fbebde3ff012e439c92df39ae6a15dfd79aa6e934c94deeaafeb22da015bf43",
+  "stderr": ""
+}

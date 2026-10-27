@@ -1,0 +1,288 @@
+{
+  "schema": "sddctx.run/v1",
+  "generated_at": "20261027T142433Z",
+  "task": {
+    "id": "orders-filters.task",
+    "title": "任务：为订单查询接口增加筛选能力（orders-filters-v2）",
+    "path": "demo/tasks/orders-filters.task.md",
+    "requirements": [
+      "REQ-ORD-001",
+      "REQ-ORD-002",
+      "REQ-ORD-003",
+      "REQ-ORD-004",
+      "REQ-ORD-005",
+      "REQ-ORD-006",
+      "REQ-ORD-007",
+      "REQ-ORD-008",
+      "REQ-ORD-009"
+    ]
+  },
+  "seekdb": "seekdb server 127.0.0.1:2881/sddctx",
+  "code_version": {
+    "base_git_head": "0838e9c3d6393e9a47ae56c4a9f02f6e6519833c",
+    "demo_tree_state": "after",
+    "patch_sha256": "9c397d810af667938a8ad0e26c88abe7f221c808e797b987df69e0cc48720679",
+    "suite_files": [
+      "demo/tests/target/test_orders_filters_target.py",
+      "demo/tests/regression/test_orders_regression.py"
+    ]
+  },
+  "ingest": {
+    "chunks": 48,
+    "counts": {
+      "spec": 9,
+      "code": 15,
+      "test": 24
+    },
+    "archive": ".data/ingest/ingest-20261027T142414Z.jsonl"
+  },
+  "context_pack": "evidence/context/orders-filters.task-20261027T142418Z.json",
+  "context_sha256": "bf2be9963af6ad3d9e04ec73c578e1a565a6017abdcf27b6feaa64fb15cb05b4",
+  "patch": {
+    "path": "patches/0001-orders-filters.patch",
+    "sha256": "9c397d810af667938a8ad0e26c88abe7f221c808e797b987df69e0cc48720679"
+  },
+  "generation": {
+    "mode": "replay",
+    "patch_meta": "patches/0001-orders-filters.meta.json"
+  },
+  "db_evidence": "records/db/seekdb-queries-run-20261027T142414Z.json",
+  "state_evidence": "records/powercontext/state-final-20261027T142432Z.json",
+  "before": {
+    "target": {
+      "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/target -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/before-target.junit.xml",
+      "exit_code": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 6,
+        "errors": 0,
+        "skipped": 0
+      },
+      "log_path": "evidence/logs/before-target.json"
+    },
+    "regression": {
+      "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/regression -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/before-regression.junit.xml",
+      "exit_code": 0,
+      "counts": {
+        "passed": 18,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "log_path": "evidence/logs/before-regression.json"
+    }
+  },
+  "after": {
+    "target": {
+      "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/target -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-target.junit.xml",
+      "exit_code": 0,
+      "counts": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "log_path": "evidence/logs/after-target.json"
+    },
+    "regression": {
+      "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/regression -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-regression.junit.xml",
+      "exit_code": 0,
+      "counts": {
+        "passed": 18,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "log_path": "evidence/logs/after-regression.json"
+    }
+  },
+  "verdict": {
+    "ok": true,
+    "checks": [
+      {
+        "check": "target fails before the change",
+        "ok": true,
+        "detail": "failing target tests before = 6, exit=1"
+      },
+      {
+        "check": "expected number of failing target tests",
+        "ok": true,
+        "detail": "expected 6, observed 6"
+      },
+      {
+        "check": "regression passes before the change",
+        "ok": true,
+        "detail": "exit=0, failed=0"
+      },
+      {
+        "check": "target passes after the change",
+        "ok": true,
+        "detail": "exit=0, passed=6"
+      },
+      {
+        "check": "regression passes after the change",
+        "ok": true,
+        "detail": "exit=0, passed=18"
+      },
+      {
+        "check": "same test files were executed",
+        "ok": true,
+        "detail": "target suite collected the same number of tests before and after"
+      }
+    ]
+  },
+  "powercontext": {
+    "db": ".data/powercontext/pc.db",
+    "scope_key": "sddctx-orders-filters-v1",
+    "outcome": {
+      "scope_id": "scp_452s2vg0m1r0ajcq3yse57kjde",
+      "contract": {
+        "kind": "work-contract",
+        "source_ref": {
+          "source_type": "content",
+          "source_id": "pcstore-contract-1793111071434856614"
+        },
+        "position": 11,
+        "content_digest": "sha256:1ae116dc11fdb22f13b58fb400ce9b7abb451a0470269ed7b9e70713914bd1e9"
+      },
+      "handoff": {
+        "family": "handoff",
+        "artifact_id": "handoff",
+        "revision": 1
+      },
+      "ack": {
+        "status": "accepted",
+        "resolution_status": "resolved",
+        "selection": "exact",
+        "selected_revision": {
+          "family": "handoff",
+          "artifact_id": "handoff",
+          "revision": 1
+        },
+        "receipt": {
+          "kind": "handoff-receipt",
+          "source_ref": {
+            "source_type": "content",
+            "source_id": "pcstore-ack-1793111071434856614"
+          },
+          "position": 13,
+          "content_digest": "sha256:0bc272579d549b797d3b0b918a283eed4b247785861095b535cfb79cdf83508e"
+        }
+      },
+      "outcome": {
+        "kind": "task-outcome",
+        "source_ref": {
+          "source_type": "content",
+          "source_id": "pcstore-outcome-1793111071434856614"
+        },
+        "position": 14,
+        "content_digest": "sha256:85d57b89374cc17a48a01525b5d3cf2e0a0bdbd9c82073d7007b42c6449d9f83"
+      },
+      "continuity": {
+        "total_event_count": 4,
+        "coverage": {
+          "contract_records": 1,
+          "handoff_records": 1,
+          "acknowledgement_records": 1,
+          "outcome_records": 1,
+          "transfer_state": "accepted",
+          "outcome_state": "covered",
+          "active_receipt_ref": {
+            "source_type": "content",
+            "source_id": "pcstore-ack-1793111071434856614"
+          },
+          "handoff_result_covered": true
+        },
+        "events": [
+          {
+            "position": 11,
+            "kind": "work-contract",
+            "source_ref": {
+              "source_type": "content",
+              "source_id": "pcstore-contract-1793111071434856614"
+            },
+            "record_schema": "powercontext.work-contract.v1",
+            "status": "delegated",
+            "summary": "完成 任务：为订单查询接口增加筛选能力（orders-filters-v2）",
+            "actor": null,
+            "selected_revision": null,
+            "handoff_receipt_ref": null,
+            "receiver_checks": null
+          },
+          {
+            "position": 12,
+            "kind": "handoff-boundary",
+            "source_ref": {
+              "source_type": "content",
+              "source_id": "pcstore-boundary-1793111071434856614"
+            },
+            "record_schema": "powercontext.current-work-handoff.v1",
+            "status": "complete",
+            "summary": "完成 任务：为订单查询接口增加筛选能力（orders-filters-v2）",
+            "actor": null,
+            "selected_revision": null,
+            "handoff_receipt_ref": null,
+            "receiver_checks": null
+          },
+          {
+            "position": 13,
+            "kind": "handoff-receipt",
+            "source_ref": {
+              "source_type": "content",
+              "source_id": "pcstore-ack-1793111071434856614"
+            },
+            "record_schema": "powercontext.handoff-receipt.v1",
+            "status": "accepted",
+            "summary": null,
+            "actor": "sddctx-pcstore",
+            "selected_revision": {
+              "family": "handoff",
+              "artifact_id": "handoff",
+              "revision": 1
+            },
+            "handoff_receipt_ref": null,
+            "receiver_checks": {
+              "live_state": "confirmed",
+              "capability": "confirmed",
+              "authorization": "confirmed"
+            }
+          },
+          {
+            "position": 14,
+            "kind": "task-outcome",
+            "source_ref": {
+              "source_type": "content",
+              "source_id": "pcstore-outcome-1793111071434856614"
+            },
+            "record_schema": "powercontext.task-outcome.v1",
+            "status": "succeeded",
+            "summary": "target fails before the change=PASS (failing target tests before = 6, exit=1); expected number of failing target tests=PASS (expected 6, observed 6); regression passes before the change=PASS (exit=0, failed=0); target passes after the change=PASS (exit=0, passed=6); regression passes after the change=PASS (exit=0, passed=18); same test files were executed=PASS (target suite collected the same number of tests before and after)",
+            "actor": null,
+            "selected_revision": null,
+            "handoff_receipt_ref": {
+              "source_type": "content",
+              "source_id": "pcstore-ack-1793111071434856614"
+            },
+            "receiver_checks": null
+          }
+        ]
+      },
+      "disposition": "complete",
+      "truncated": {
+        "done": 0,
+        "todo": 0,
+        "checks": 0
+      }
+    }
+  },
+  "next_action": {
+    "kind": "next_step",
+    "text": "如需继续：更新规格后重新 ingest，并重新生成上下文",
+    "ref": {
+      "family": "atomic-memory",
+      "artifact_id": "art_6cb17ec4f6a84b50bb930a25c96b5079",
+      "revision": 1
+    },
+    "state": "active"
+  }
+}

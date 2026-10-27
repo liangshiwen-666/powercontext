@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sddctx"
+version = "0.1.0"
+description = "Spec-driven development context toolkit (specs + code + tests + task state)"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+  "powercontext[builtin]==1.4.1",
+  "pymysql>=1.1,<3.0",
+  "requests>=2.31,<3.0",
+]
+
+[project.optional-dependencies]
+demo = [
+  "fastapi>=0.115,<1.0",
+  "uvicorn>=0.30,<1.0",
+  "pytest>=8.0,<10.0",
+  "httpx>=0.27,<1.0",
+]
+seekdb-embedded = ["pylibseekdb>=1.4.0.post1,<1.5"]
+
+[tool.setuptools]
+packages = ["sddctx"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

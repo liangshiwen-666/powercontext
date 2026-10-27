@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="6" time="1.063" timestamp="2026-10-27T22:24:22.185893+08:00" hostname="liangshuo"><testcase classname="tests.target.test_orders_filters_target" name="test_filter_by_status" time="0.037"><failure message="assert 7 == 3">tests/target/test_orders_filters_target.py:17: in test_filter_by_status
+    assert body["total"] == 3
+E   assert 7 == 3</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_filter_by_created_range_inclusive" time="0.012"><failure message="assert 7 == 4">tests/target/test_orders_filters_target.py:27: in test_filter_by_created_range_inclusive
+    assert body["total"] == 4
+E   assert 7 == 4</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_filter_by_min_amount_inclusive" time="0.012"><failure message="assert 7 == 3">tests/target/test_orders_filters_target.py:35: in test_filter_by_min_amount_inclusive
+    assert body["total"] == 3
+E   assert 7 == 3</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_filters_compose" time="0.012"><failure message="assert 7 == 2">tests/target/test_orders_filters_target.py:44: in test_filters_compose
+    assert body["total"] == 2
+E   assert 7 == 2</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_invalid_filter_values" time="0.013"><failure message="AssertionError: {'status': 'bogus'}&#10;assert 200 == 400&#10; +  where 200 = &lt;Response [200 OK]&gt;.status_code">tests/target/test_orders_filters_target.py:57: in test_invalid_filter_values
+    assert resp.status_code == 400, params
+E   AssertionError: {'status': 'bogus'}
+E   assert 200 == 400
+E    +  where 200 = &lt;Response [200 OK]&gt;.status_code</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_invalid_created_range" time="0.012"><failure message="AssertionError: {'created_after': 'not-a-date'}&#10;assert 200 == 400&#10; +  where 200 = &lt;Response [200 OK]&gt;.status_code">tests/target/test_orders_filters_target.py:72: in test_invalid_created_range
+    assert resp.status_code == 400, params
+E   AssertionError: {'created_after': 'not-a-date'}
+E   assert 200 == 400
+E    +  where 200 = &lt;Response [200 OK]&gt;.status_code</failure></testcase></testsuite></testsuites>

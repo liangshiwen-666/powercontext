@@ -1,0 +1,493 @@
+{
+  "schema": "sddctx.context-pack/v1",
+  "generated_at": "2026-10-27T14:23:28Z",
+  "task": {
+    "id": "orders-filters.task",
+    "title": "任务：为订单查询接口增加筛选能力（orders-filters-v2）",
+    "path": "demo/tasks/orders-filters.task.md",
+    "requirements": [
+      "REQ-ORD-001",
+      "REQ-ORD-002",
+      "REQ-ORD-003",
+      "REQ-ORD-004",
+      "REQ-ORD-005",
+      "REQ-ORD-006",
+      "REQ-ORD-007",
+      "REQ-ORD-008",
+      "REQ-ORD-009"
+    ]
+  },
+  "task_text": "# 任务：为订单查询接口增加筛选能力（orders-filters-v2）\n\n## 任务目标\n\n为 `GET /orders` 增加四个可选筛选参数，并实现组合语义：\n\n- `status`：按订单状态筛选（REQ-ORD-006）\n- `created_after` / `created_before`：按下单时间范围筛选，两端包含（REQ-ORD-007）\n- `min_amount`：按金额下限筛选，包含边界（REQ-ORD-008）\n- 多个筛选参数可组合（REQ-ORD-009）\n\n非法筛选参数必须返回 400，统一使用错误信封且 `code=INVALID_FILTER`（REQ-ORD-005）。\n\n## 依据（生效规格）\n\n`specs/orders.md` v2.0：REQ-ORD-006、REQ-ORD-007、REQ-ORD-008、REQ-ORD-009，\n以及验收映射表。\n\n## 必须保持（回归约束）\n\n- REQ-ORD-001 分页默认值与上下限、REQ-ORD-002 调用者隔离、REQ-ORD-003 排序、\n  REQ-ORD-004 单条订单语义、REQ-ORD-005 错误信封。\n- CONSTRAINTS C1：未提供新参数时输出与 v1.0 逐字段一致。\n- CONSTRAINTS C2：调用者隔离不可退化。\n- CONSTRAINTS C4：`total` 是过滤后、分页前的数量。\n- CONSTRAINTS C5：未知查询参数必须被忽略。\n\n## 修改范围\n\n只修改 `app/` 下的实现代码（`routes.py`、`service.py` 等）。\n不要修改 `tests/`（目标测试与回归测试由测试方提供，修改测试视为无效实现）。\n\n## 验收\n\n1. `pytest tests/target -q` 全部通过（修改前应全部失败）。\n2. `pytest tests/regression -q` 全部通过（修改前后都必须通过）。\n3. 目标测试与回归测试使用同一份测试文件，不允许删除断言或修改预期。\n",
+  "specs": [
+    {
+      "requirement_id": "REQ-ORD-001",
+      "title": "列表分页",
+      "citation": "demo/specs/orders.md:15-23",
+      "score": 2.0526,
+      "required": true,
+      "matched_by": "requirement:REQ-ORD-001",
+      "excerpt": "### REQ-ORD-001 列表分页\n\n`GET /orders` 返回当前调用者订单的分页结果。\n\n- 响应体固定为 `{\"items\": [...], \"total\": <int>, \"limit\": <int>, \"offset\": <int>}`。\n- `limit` 默认 20，取值范围 1–100（含两端）。\n- `offset` 默认 0，必须 `>= 0`。\n- `total` 是过滤后、分页前的订单总数。\n- 违反上述约束返回 400，`code=INVALID_PAGINATION`，`field` 为 `limit` 或 `offset`。"
+    },
+    {
+      "requirement_id": "REQ-ORD-002",
+      "title": "调用者隔离",
+      "citation": "demo/specs/orders.md:25-28",
+      "score": 2.7968,
+      "required": true,
+      "matched_by": "requirement:REQ-ORD-002",
+      "excerpt": "### REQ-ORD-002 调用者隔离\n\n- 请求必须携带 `X-User-Id` 请求头；缺失或全空白返回 401，`code=UNAUTHENTICATED`。\n- 列表与单条查询都只能看到该调用者自己的订单，任何响应不得泄露他人订单的存在或内容。"
+    },
+    {
+      "requirement_id": "REQ-ORD-003",
+      "title": "排序",
+      "citation": "demo/specs/orders.md:30-33",
+      "score": 3.7286,
+      "required": true,
+      "matched_by": "requirement:REQ-ORD-003",
+      "excerpt": "### REQ-ORD-003 排序\n\n- `sort` 可选值：`created_at_desc`（默认）、`created_at_asc`、`amount_desc`。\n- 非法值返回 400，`code=INVALID_SORT`，`field=sort`。"
+    },
+    {
+      "requirement_id": "REQ-ORD-004",
+      "title": "单条订单",
+      "citation": "demo/specs/orders.md:35-37",
+      "score": 3.5733,
+      "required": true,
+      "matched_by": "requirement:REQ-ORD-004",
+      "excerpt": "### REQ-ORD-004 单条订单\n\n- `GET /orders/{order_id}` 返回该订单；订单不存在或不属于调用者时返回 404，`code=ORDER_NOT_FOUND`。"
+    },
+    {
+      "requirement_id": "REQ-ORD-005",
+      "title": "错误信封",
+      "citation": "demo/specs/orders.md:39-42",
+      "score": 4.1659,
+      "required": true,
+      "matched_by": "requirement:REQ-ORD-005",
+      "excerpt": "### REQ-ORD-005 错误信封\n\n- 所有 4xx 响应体统一为 `{\"error\": {\"code\": \"...\", \"message\": \"...\", \"field\": \"...\"}}`；\n  `field` 只在字段级错误时出现。"
+    },
+    {
+      "requirement_id": "REQ-ORD-006",
+      "title": "状态筛选（v2.0 新增）",
+      "citation": "demo/specs/orders.md:44-49",
+      "score": 2.0341,
+      "required": true,
+      "matched_by": "requirement:REQ-ORD-006",
+      "excerpt": "### REQ-ORD-006 状态筛选（v2.0 新增）\n\n- `GET /orders` 支持可选查询参数 `status`，取值 `pending`、`paid`、`shipped`、`cancelled`。\n- 提供时只返回该状态的订单；省略时不按状态过滤。\n- 非法值（大小写不敏感比较也不匹配）返回 400，`code=INVALID_FILTER`，`field=status`。\n- 实现要点：在 `list_orders` 的过滤阶段应用，不能影响 `total` 的语义。"
+    },
+    {
+      "requirement_id": "REQ-ORD-007",
+      "title": "创建时间范围筛选（v2.0 新增）",
+      "citation": "demo/specs/orders.md:51-58",
+      "score": 1.6977,
+      "required": true,
+      "matched_by": "requirement:REQ-ORD-007",
+      "excerpt": "### REQ-ORD-007 创建时间范围筛选（v2.0 新增）\n\n- 支持可选参数 `created_after`、`created_before`，接受 ISO-8601 日期（`2026-09-05`）或带时区\n  日期时间（`2026-09-05T00:00:00Z`）；只给日期时按当天 00:00:00 UTC 解释。\n- 语义：`created_after <= created_at <= created_before`，两端都包含；只给一端时另一端不限制。\n- 无法解析返回 400，`code=INVALID_FILTER`，`field` 为对应参数名。\n- `created_after` 晚于 `created_before` 返回 400，`code=INVALID_FILTER`，`field=created_after`。\n- 实现要点：新增 `parse_created_bounds` 校验函数，与既有 `parse_pagination`/`parse_sort` 风格一致。"
+    },
+    {
+      "requirement_id": "REQ-ORD-008",
+      "title": "金额下限筛选（v2.0 新增）",
+      "citation": "demo/specs/orders.md:60-65",
+      "score": 2.7667,
+      "required": true,
+      "matched_by": "requirement:REQ-ORD-008",
+      "excerpt": "### REQ-ORD-008 金额下限筛选（v2.0 新增）\n\n- 支持可选参数 `min_amount`，十进制数，必须 `>= 0`。\n- 语义：`amount >= min_amount`（包含边界）。\n- 非数字或负数返回 400，`code=INVALID_FILTER`，`field=min_amount`。\n- 实现要点：新增 `parse_min_amount` 校验函数，使用 `Decimal` 比较，避免浮点误差。"
+    },
+    {
+      "requirement_id": "REQ-ORD-009",
+      "title": "筛选组合（v2.0 新增）",
+      "citation": "demo/specs/orders.md:67-71",
+      "score": 2.7667,
+      "required": true,
+      "matched_by": "requirement:REQ-ORD-009",
+      "excerpt": "### REQ-ORD-009 筛选组合（v2.0 新增）\n\n- 任意筛选参数可以组合，结果必须同时满足所有条件。\n- `total` 反映组合过滤后的数量，分页与排序在过滤之后应用。\n- 未提供任何筛选参数时，输出必须与 v1.0 完全一致。"
+    }
+  ],
+  "specs_missing": [],
+  "code": [
+    {
+      "path": "demo/app/service.py",
+      "symbol": "parse_pagination",
+      "line_start": 43,
+      "line_end": 57,
+      "citation": "demo/app/service.py:43-57",
+      "score": 1.9445,
+      "reason": "symbol~:INVALID_PAGINATION",
+      "excerpt": "def parse_pagination(limit_raw: str | None, offset_raw: str | None) -> tuple[int, int]:\n    \"\"\"REQ-ORD-001: limit defaults to 20 and must stay in 1..100; offset >= 0.\"\"\"\n\n    limit = _parse_int(limit_raw, default=DEFAULT_LIMIT, field=\"limit\")\n    offset = _parse_int(offset_raw, default=0, field=\"offset\")\n    if limit < 1 or limit > MAX_LIMIT:\n        raise ApiError(\n            400,\n            \"INVALID_PAGINATION\",\n            f\"limit must be between 1 and {MAX_LIMIT}\",\n            field=\"limit\",\n        )\n    if offset < 0:\n        raise ApiError(400, \"INVALID_PAGINATION\", \"offset must be greater than or equal to 0\", field=\"offset\")\n    return limit, offset"
+    },
+    {
+      "path": "demo/app/service.py",
+      "symbol": "_sort_orders",
+      "line_start": 75,
+      "line_end": 80,
+      "citation": "demo/app/service.py:75-80",
+      "score": 2.454,
+      "reason": "symbol~:created_at_asc",
+      "excerpt": "def _sort_orders(orders: list[Order], sort: str) -> list[Order]:\n    if sort == \"created_at_asc\":\n        return sorted(orders, key=lambda order: order.created_at)\n    if sort == \"amount_desc\":\n        return sorted(orders, key=lambda order: order.amount, reverse=True)\n    return sorted(orders, key=lambda order: order.created_at, reverse=True)"
+    },
+    {
+      "path": "demo/app/service.py",
+      "symbol": "parse_sort",
+      "line_start": 60,
+      "line_end": 72,
+      "citation": "demo/app/service.py:60-72",
+      "score": 2.3518,
+      "reason": "symbol~:INVALID_SORT",
+      "excerpt": "def parse_sort(sort_raw: str | None) -> str:\n    \"\"\"REQ-ORD-003: ``sort`` is one of the documented keys.\"\"\"\n\n    if sort_raw is None or sort_raw == \"\":\n        return SORT_KEYS[0]\n    if sort_raw not in SORT_KEYS:\n        raise ApiError(\n            400,\n            \"INVALID_SORT\",\n            f\"sort must be one of {', '.join(SORT_KEYS)}\",\n            field=\"sort\",\n        )\n    return sort_raw"
+    },
+    {
+      "path": "demo/app/routes.py",
+      "symbol": "get_order_route",
+      "line_start": 37,
+      "line_end": 44,
+      "citation": "demo/app/routes.py:37-44",
+      "score": 3.7812,
+      "reason": "symbol~:order_id",
+      "excerpt": "@router.get(\"/orders/{order_id}\")\ndef get_order_route(\n    request: Request,\n    order_id: str,\n    x_user_id: str | None = Header(default=None, alias=\"X-User-Id\"),\n) -> dict[str, str]:\n    user_id = require_user(x_user_id)\n    return get_order(request.app.state.repo, user_id, order_id)"
+    },
+    {
+      "path": "demo/app/service.py",
+      "symbol": "get_order",
+      "line_start": 104,
+      "line_end": 110,
+      "citation": "demo/app/service.py:104-110",
+      "score": 2.1457,
+      "reason": "symbol~:ORDER_NOT_FOUND",
+      "excerpt": "def get_order(repo: OrderRepository, user_id: str, order_id: str) -> dict[str, str]:\n    \"\"\"REQ-ORD-004: unknown or foreign orders are a plain 404.\"\"\"\n\n    order = repo.get_for_user(user_id, order_id)\n    if order is None:\n        raise ApiError(404, \"ORDER_NOT_FOUND\", f\"order {order_id} was not found\", field=\"order_id\")\n    return order.to_dict()"
+    },
+    {
+      "path": "demo/app/service.py",
+      "symbol": "list_orders",
+      "line_start": 83,
+      "line_end": 101,
+      "citation": "demo/app/service.py:83-101",
+      "score": 2.171,
+      "reason": "symbol:list_orders",
+      "excerpt": "def list_orders(\n    repo: OrderRepository,\n    user_id: str,\n    *,\n    limit: int,\n    offset: int,\n    sort: str,\n) -> dict[str, object]:\n    \"\"\"Return one page of the caller's orders (REQ-ORD-001/002/003).\"\"\"\n\n    orders = _sort_orders(repo.list_for_user(user_id), sort)\n    total = len(orders)\n    page = orders[offset : offset + limit]\n    return {\n        \"items\": [order.to_dict() for order in page],\n        \"total\": total,\n        \"limit\": limit,\n        \"offset\": offset,\n    }"
+    },
+    {
+      "path": "demo/app/main.py",
+      "symbol": "create_app",
+      "line_start": 13,
+      "line_end": 22,
+      "citation": "demo/app/main.py:13-22",
+      "score": 4.5391,
+      "reason": "task+spec keywords",
+      "excerpt": "def create_app(repository: OrderRepository | None = None) -> FastAPI:\n    app = FastAPI(title=\"orders-service\", version=\"1.0.0\")\n    app.state.repo = repository if repository is not None else OrderRepository()\n    app.include_router(router)\n\n    @app.exception_handler(ApiError)\n    async def _handle_api_error(_request: Request, exc: ApiError) -> JSONResponse:\n        return JSONResponse(status_code=exc.status_code, content=exc.to_payload())\n\n    return app"
+    },
+    {
+      "path": "demo/app/errors.py",
+      "symbol": "ApiError",
+      "line_start": 6,
+      "line_end": 27,
+      "citation": "demo/app/errors.py:6-27",
+      "score": 3.1798,
+      "reason": "task+spec keywords",
+      "excerpt": "class ApiError(Exception):\n    \"\"\"Raised by the service layer; rendered by the FastAPI exception handler.\"\"\"\n\n    def __init__(\n        self,\n        status_code: int,\n        code: str,\n        message: str,\n        *,\n        field: str | None = None,\n    ) -> None:\n        super().__init__(message)\n        self.status_code = status_code\n        self.code = code\n        self.message = message\n        self.field = field\n\n    def to_payload(self) -> dict[str, object]:\n        error: dict[str, object] = {\"code\": self.code, \"message\": self.message}\n        if self.field is not None:\n            error[\"field\"] = self.field\n        return {\"error\": error}"
+    },
+    {
+      "path": "demo/app/routes.py",
+      "symbol": "health",
+      "line_start": 12,
+      "line_end": 14,
+      "citation": "demo/app/routes.py:12-14",
+      "score": 2.0228,
+      "reason": "task+spec keywords",
+      "excerpt": "@router.get(\"/health\")\ndef health() -> dict[str, str]:\n    return {\"status\": \"ok\"}"
+    },
+    {
+      "path": "demo/app/models.py",
+      "symbol": "Order",
+      "line_start": 15,
+      "line_end": 37,
+      "citation": "demo/app/models.py:15-37",
+      "score": 1.6724,
+      "reason": "task+spec keywords",
+      "excerpt": "@dataclass(frozen=True)\nclass Order:\n    \"\"\"A single order owned by exactly one user.\"\"\"\n\n    id: str\n    user_id: str\n    status: str\n    amount: Decimal\n    currency: str\n    created_at: datetime\n\n    def to_dict(self) -> dict[str, str]:\n        created = self.created_at.isoformat()\n        if created.endswith(\"+00:00\"):\n            created = created[: -len(\"+00:00\")] + \"Z\"\n        return {\n            \"id\": self.id,\n            \"user_id\": self.user_id,\n            \"status\": self.status,\n            \"amount\": format(self.amount, \".2f\"),\n            \"currency\": self.currency,\n            \"created_at\": created,\n        }"
+    }
+  ],
+  "file_contents": {
+    "demo/app/service.py": "\"\"\"Order query service.\n\nImplemented requirements (see ``specs/orders.md``):\n\n* REQ-ORD-001  list pagination\n* REQ-ORD-002  caller isolation\n* REQ-ORD-003  sorting\n* REQ-ORD-004  single order lookup\n\nFiltering (REQ-ORD-006 .. REQ-ORD-009) is scheduled for v2.0 and is not\nimplemented in this version.\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom .errors import ApiError\nfrom .models import DEFAULT_LIMIT, MAX_LIMIT, SORT_KEYS, Order\nfrom .repo import OrderRepository\n\n\ndef require_user(x_user_id: str | None) -> str:\n    \"\"\"REQ-ORD-002: every request must identify the caller.\"\"\"\n\n    if x_user_id is None or not x_user_id.strip():\n        raise ApiError(401, \"UNAUTHENTICATED\", \"X-User-Id header is required\", field=\"X-User-Id\")\n    return x_user_id.strip()\n\n\ndef _parse_int(raw: str | None, *, default: int, field: str) -> int:\n    if raw is None or raw == \"\":\n        return default\n    try:\n        return int(raw)\n    except (TypeError, ValueError):\n        raise ApiError(\n            400,\n            \"INVALID_PAGINATION\",\n            f\"{field} must be an integer\",\n            field=field,\n        ) from None\n\n\ndef parse_pagination(limit_raw: str | None, offset_raw: str | None) -> tuple[int, int]:\n    \"\"\"REQ-ORD-001: limit defaults to 20 and must stay in 1..100; offset >= 0.\"\"\"\n\n    limit = _parse_int(limit_raw, default=DEFAULT_LIMIT, field=\"limit\")\n    offset = _parse_int(offset_raw, default=0, field=\"offset\")\n    if limit < 1 or limit > MAX_LIMIT:\n        raise ApiError(\n            400,\n            \"INVALID_PAGINATION\",\n            f\"limit must be between 1 and {MAX_LIMIT}\",\n            field=\"limit\",\n        )\n    if offset < 0:\n        raise ApiError(400, \"INVALID_PAGINATION\", \"offset must be greater than or equal to 0\", field=\"offset\")\n    return limit, offset\n\n\ndef parse_sort(sort_raw: str | None) -> str:\n    \"\"\"REQ-ORD-003: ``sort`` is one of the documented keys.\"\"\"\n\n    if sort_raw is None or sort_raw == \"\":\n        return SORT_KEYS[0]\n    if sort_raw not in SORT_KEYS:\n        raise ApiError(\n            400,\n            \"INVALID_SORT\",\n            f\"sort must be one of {', '.join(SORT_KEYS)}\",\n            field=\"sort\",\n        )\n    return sort_raw\n\n\ndef _sort_orders(orders: list[Order], sort: str) -> list[Order]:\n    if sort == \"created_at_asc\":\n        return sorted(orders, key=lambda order: order.created_at)\n    if sort == \"amount_desc\":\n        return sorted(orders, key=lambda order: order.amount, reverse=True)\n    return sorted(orders, key=lambda order: order.created_at, reverse=True)\n\n\ndef list_orders(\n    repo: OrderRepository,\n    user_id: str,\n    *,\n    limit: int,\n    offset: int,\n    sort: str,\n) -> dict[str, object]:\n    \"\"\"Return one page of the caller's orders (REQ-ORD-001/002/003).\"\"\"\n\n    orders = _sort_orders(repo.list_for_user(user_id), sort)\n    total = len(orders)\n    page = orders[offset : offset + limit]\n    return {\n        \"items\": [order.to_dict() for order in page],\n        \"total\": total,\n        \"limit\": limit,\n        \"offset\": offset,\n    }\n\n\ndef get_order(repo: OrderRepository, user_id: str, order_id: str) -> dict[str, str]:\n    \"\"\"REQ-ORD-004: unknown or foreign orders are a plain 404.\"\"\"\n\n    order = repo.get_for_user(user_id, order_id)\n    if order is None:\n        raise ApiError(404, \"ORDER_NOT_FOUND\", f\"order {order_id} was not found\", field=\"order_id\")\n    return order.to_dict()\n",
+    "demo/app/routes.py": "\"\"\"HTTP routes for the orders service.\"\"\"\n\nfrom __future__ import annotations\n\nfrom fastapi import APIRouter, Header, Request\n\nfrom .service import get_order, list_orders, parse_pagination, parse_sort, require_user\n\nrouter = APIRouter()\n\n\n@router.get(\"/health\")\ndef health() -> dict[str, str]:\n    return {\"status\": \"ok\"}\n\n\n@router.get(\"/orders\")\ndef list_orders_route(\n    request: Request,\n    limit: str | None = None,\n    offset: str | None = None,\n    sort: str | None = None,\n    x_user_id: str | None = Header(default=None, alias=\"X-User-Id\"),\n) -> dict[str, object]:\n    user_id = require_user(x_user_id)\n    limit_value, offset_value = parse_pagination(limit, offset)\n    sort_value = parse_sort(sort)\n    return list_orders(\n        request.app.state.repo,\n        user_id,\n        limit=limit_value,\n        offset=offset_value,\n        sort=sort_value,\n    )\n\n\n@router.get(\"/orders/{order_id}\")\ndef get_order_route(\n    request: Request,\n    order_id: str,\n    x_user_id: str | None = Header(default=None, alias=\"X-User-Id\"),\n) -> dict[str, str]:\n    user_id = require_user(x_user_id)\n    return get_order(request.app.state.repo, user_id, order_id)\n",
+    "demo/app/main.py": "\"\"\"Application factory for the orders service.\"\"\"\n\nfrom __future__ import annotations\n\nfrom fastapi import FastAPI, Request\nfrom fastapi.responses import JSONResponse\n\nfrom .errors import ApiError\nfrom .repo import OrderRepository\nfrom .routes import router\n\n\ndef create_app(repository: OrderRepository | None = None) -> FastAPI:\n    app = FastAPI(title=\"orders-service\", version=\"1.0.0\")\n    app.state.repo = repository if repository is not None else OrderRepository()\n    app.include_router(router)\n\n    @app.exception_handler(ApiError)\n    async def _handle_api_error(_request: Request, exc: ApiError) -> JSONResponse:\n        return JSONResponse(status_code=exc.status_code, content=exc.to_payload())\n\n    return app\n\n\napp = create_app()\n",
+    "demo/app/errors.py": "\"\"\"Error envelope shared by every endpoint (REQ-ORD-005).\"\"\"\n\nfrom __future__ import annotations\n\n\nclass ApiError(Exception):\n    \"\"\"Raised by the service layer; rendered by the FastAPI exception handler.\"\"\"\n\n    def __init__(\n        self,\n        status_code: int,\n        code: str,\n        message: str,\n        *,\n        field: str | None = None,\n    ) -> None:\n        super().__init__(message)\n        self.status_code = status_code\n        self.code = code\n        self.message = message\n        self.field = field\n\n    def to_payload(self) -> dict[str, object]:\n        error: dict[str, object] = {\"code\": self.code, \"message\": self.message}\n        if self.field is not None:\n            error[\"field\"] = self.field\n        return {\"error\": error}\n",
+    "demo/app/models.py": "\"\"\"Domain models for the orders service.\"\"\"\n\nfrom __future__ import annotations\n\nfrom dataclasses import dataclass\nfrom datetime import datetime\nfrom decimal import Decimal\n\nORDER_STATUSES: tuple[str, ...] = (\"pending\", \"paid\", \"shipped\", \"cancelled\")\nSORT_KEYS: tuple[str, ...] = (\"created_at_desc\", \"created_at_asc\", \"amount_desc\")\nDEFAULT_LIMIT = 20\nMAX_LIMIT = 100\n\n\n@dataclass(frozen=True)\nclass Order:\n    \"\"\"A single order owned by exactly one user.\"\"\"\n\n    id: str\n    user_id: str\n    status: str\n    amount: Decimal\n    currency: str\n    created_at: datetime\n\n    def to_dict(self) -> dict[str, str]:\n        created = self.created_at.isoformat()\n        if created.endswith(\"+00:00\"):\n            created = created[: -len(\"+00:00\")] + \"Z\"\n        return {\n            \"id\": self.id,\n            \"user_id\": self.user_id,\n            \"status\": self.status,\n            \"amount\": format(self.amount, \".2f\"),\n            \"currency\": self.currency,\n            \"created_at\": created,\n        }\n"
+  },
+  "tests": [
+    {
+      "name": "test_filter_by_status",
+      "suite": "target",
+      "path": "demo/tests/target/test_orders_filters_target.py",
+      "citation": "demo/tests/target/test_orders_filters_target.py:13-19",
+      "score": 2.3276,
+      "requirements": [
+        "REQ-ORD-006"
+      ],
+      "reason": "requirement:REQ-ORD-006",
+      "excerpt": "def test_filter_by_status(client):\n    \"\"\"REQ-ORD-006: only orders with the requested status are returned.\"\"\"\n\n    body = client.get(\"/orders\", params={\"status\": \"paid\"}, headers=ALICE).json()\n    assert body[\"total\"] == 3\n    assert [item[\"id\"] for item in body[\"items\"]] == [\"o-1006\", \"o-1003\", \"o-1002\"]\n    assert {item[\"status\"] for item in body[\"items\"]} == {\"paid\"}"
+    },
+    {
+      "name": "test_invalid_filter_values",
+      "suite": "target",
+      "path": "demo/tests/target/test_orders_filters_target.py",
+      "citation": "demo/tests/target/test_orders_filters_target.py:48-60",
+      "score": 2.2354,
+      "requirements": [
+        "REQ-ORD-006"
+      ],
+      "reason": "requirement:REQ-ORD-006",
+      "excerpt": "def test_invalid_filter_values(client):\n    \"\"\"REQ-ORD-006/008: invalid enum and amount values are INVALID_FILTER.\"\"\"\n\n    for params, field in (\n        ({\"status\": \"bogus\"}, \"status\"),\n        ({\"min_amount\": \"-1\"}, \"min_amount\"),\n        ({\"min_amount\": \"abc\"}, \"min_amount\"),\n    ):\n        resp = client.get(\"/orders\", params=params, headers=ALICE)\n        assert resp.status_code == 400, params\n        error = resp.json()[\"error\"]\n        assert error[\"code\"] == \"INVALID_FILTER\", params\n        assert error[\"field\"] == field, params"
+    },
+    {
+      "name": "test_filter_by_created_range_inclusive",
+      "suite": "target",
+      "path": "demo/tests/target/test_orders_filters_target.py",
+      "citation": "demo/tests/target/test_orders_filters_target.py:22-28",
+      "score": 2.5086,
+      "requirements": [
+        "REQ-ORD-007"
+      ],
+      "reason": "requirement:REQ-ORD-007",
+      "excerpt": "def test_filter_by_created_range_inclusive(client):\n    \"\"\"REQ-ORD-007: both range bounds are inclusive.\"\"\"\n\n    params = {\"created_after\": \"2026-09-05\", \"created_before\": \"2026-09-16\"}\n    body = client.get(\"/orders\", params=params, headers=ALICE).json()\n    assert body[\"total\"] == 4\n    assert [item[\"id\"] for item in body[\"items\"]] == [\"o-1006\", \"o-1005\", \"o-1004\", \"o-1003\"]"
+    },
+    {
+      "name": "test_invalid_created_range",
+      "suite": "target",
+      "path": "demo/tests/target/test_orders_filters_target.py",
+      "citation": "demo/tests/target/test_orders_filters_target.py:63-75",
+      "score": 2.2135,
+      "requirements": [
+        "REQ-ORD-007"
+      ],
+      "reason": "requirement:REQ-ORD-007",
+      "excerpt": "def test_invalid_created_range(client):\n    \"\"\"REQ-ORD-007: unparsable bounds and inverted ranges are INVALID_FILTER.\"\"\"\n\n    for params, field in (\n        ({\"created_after\": \"not-a-date\"}, \"created_after\"),\n        ({\"created_before\": \"2026-13-99\"}, \"created_before\"),\n        ({\"created_after\": \"2026-09-20\", \"created_before\": \"2026-09-01\"}, \"created_after\"),\n    ):\n        resp = client.get(\"/orders\", params=params, headers=ALICE)\n        assert resp.status_code == 400, params\n        error = resp.json()[\"error\"]\n        assert error[\"code\"] == \"INVALID_FILTER\", params\n        assert error[\"field\"] == field, params"
+    },
+    {
+      "name": "test_filter_by_min_amount_inclusive",
+      "suite": "target",
+      "path": "demo/tests/target/test_orders_filters_target.py",
+      "citation": "demo/tests/target/test_orders_filters_target.py:31-36",
+      "score": 2.9918,
+      "requirements": [
+        "REQ-ORD-008"
+      ],
+      "reason": "requirement:REQ-ORD-008",
+      "excerpt": "def test_filter_by_min_amount_inclusive(client):\n    \"\"\"REQ-ORD-008: the lower amount bound is inclusive.\"\"\"\n\n    body = client.get(\"/orders\", params={\"min_amount\": \"100\"}, headers=ALICE).json()\n    assert body[\"total\"] == 3\n    assert [item[\"id\"] for item in body[\"items\"]] == [\"o-1005\", \"o-1003\", \"o-1001\"]"
+    },
+    {
+      "name": "test_filters_compose",
+      "suite": "target",
+      "path": "demo/tests/target/test_orders_filters_target.py",
+      "citation": "demo/tests/target/test_orders_filters_target.py:39-45",
+      "score": 2.7085,
+      "requirements": [
+        "REQ-ORD-009"
+      ],
+      "reason": "requirement:REQ-ORD-009",
+      "excerpt": "def test_filters_compose(client):\n    \"\"\"REQ-ORD-009: filters combine and ``total`` reflects the filtered count.\"\"\"\n\n    params = {\"status\": \"paid\", \"min_amount\": \"50\", \"created_before\": \"2026-09-20T23:59:59Z\"}\n    body = client.get(\"/orders\", params=params, headers=ALICE).json()\n    assert body[\"total\"] == 2\n    assert [item[\"id\"] for item in body[\"items\"]] == [\"o-1003\", \"o-1002\"]"
+    },
+    {
+      "name": "test_health_endpoint",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:13-16",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_health_endpoint(client):\n    resp = client.get(\"/health\")\n    assert resp.status_code == 200\n    assert resp.json() == {\"status\": \"ok\"}"
+    },
+    {
+      "name": "test_default_pagination_and_order",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:19-34",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_default_pagination_and_order(client):\n    resp = client.get(\"/orders\", headers=ALICE)\n    assert resp.status_code == 200\n    body = resp.json()\n    assert body[\"limit\"] == 20\n    assert body[\"offset\"] == 0\n    assert body[\"total\"] == 7\n    assert [item[\"id\"] for item in body[\"items\"]] == [\n        \"o-1007\",\n        \"o-1006\",\n        \"o-1005\",\n        \"o-1004\",\n        \"o-1003\",\n        \"o"
+    },
+    {
+      "name": "test_pagination_slice",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:37-42",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_pagination_slice(client):\n    body = client.get(\"/orders\", params={\"limit\": 2, \"offset\": 3}, headers=ALICE).json()\n    assert body[\"total\"] == 7\n    assert body[\"limit\"] == 2\n    assert body[\"offset\"] == 3\n    assert [item[\"id\"] for item in body[\"items\"]] == [\"o-1004\", \"o-1003\"]"
+    },
+    {
+      "name": "test_pagination_beyond_end",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:45-48",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_pagination_beyond_end(client):\n    body = client.get(\"/orders\", params={\"limit\": 5, \"offset\": 50}, headers=ALICE).json()\n    assert body[\"items\"] == []\n    assert body[\"total\"] == 7"
+    },
+    {
+      "name": "test_limit_upper_bound",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:51-57",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_limit_upper_bound(client):\n    assert client.get(\"/orders\", params={\"limit\": 100}, headers=ALICE).status_code == 200\n    resp = client.get(\"/orders\", params={\"limit\": 101}, headers=ALICE)\n    assert resp.status_code == 400\n    error = resp.json()[\"error\"]\n    assert error[\"code\"] == \"INVALID_PAGINATION\"\n    assert error[\"field\"] == \"limit\""
+    },
+    {
+      "name": "test_limit_lower_bound_and_type",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:60-64",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_limit_lower_bound_and_type(client):\n    for raw in (\"0\", \"-3\", \"abc\"):\n        resp = client.get(\"/orders\", params={\"limit\": raw}, headers=ALICE)\n        assert resp.status_code == 400, raw\n        assert resp.json()[\"error\"][\"code\"] == \"INVALID_PAGINATION\""
+    },
+    {
+      "name": "test_negative_offset",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:67-72",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_negative_offset(client):\n    resp = client.get(\"/orders\", params={\"offset\": -1}, headers=ALICE)\n    assert resp.status_code == 400\n    error = resp.json()[\"error\"]\n    assert error[\"code\"] == \"INVALID_PAGINATION\"\n    assert error[\"field\"] == \"offset\""
+    },
+    {
+      "name": "test_sort_created_at_asc",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:75-85",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_sort_created_at_asc(client):\n    body = client.get(\"/orders\", params={\"sort\": \"created_at_asc\"}, headers=ALICE).json()\n    assert [item[\"id\"] for item in body[\"items\"]] == [\n        \"o-1001\",\n        \"o-1002\",\n        \"o-1003\",\n        \"o-1004\",\n        \"o-1005\",\n        \"o-1006\",\n        \"o-1007\",\n    ]"
+    },
+    {
+      "name": "test_sort_amount_desc",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:88-98",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_sort_amount_desc(client):\n    body = client.get(\"/orders\", params={\"sort\": \"amount_desc\"}, headers=ALICE).json()\n    assert [item[\"amount\"] for item in body[\"items\"]] == [\n        \"300.00\",\n        \"250.00\",\n        \"120.00\",\n        \"99.50\",\n        \"75.00\",\n        \"42.00\",\n        \"18.75\",\n    ]"
+    },
+    {
+      "name": "test_invalid_sort",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:101-106",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_invalid_sort(client):\n    resp = client.get(\"/orders\", params={\"sort\": \"bogus\"}, headers=ALICE)\n    assert resp.status_code == 400\n    error = resp.json()[\"error\"]\n    assert error[\"code\"] == \"INVALID_SORT\"\n    assert error[\"field\"] == \"sort\""
+    },
+    {
+      "name": "test_missing_user_header",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:109-112",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_missing_user_header(client):\n    resp = client.get(\"/orders\")\n    assert resp.status_code == 401\n    assert resp.json()[\"error\"][\"code\"] == \"UNAUTHENTICATED\""
+    },
+    {
+      "name": "test_blank_user_header",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:115-118",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_blank_user_header(client):\n    resp = client.get(\"/orders\", headers={\"X-User-Id\": \"   \"})\n    assert resp.status_code == 401\n    assert resp.json()[\"error\"][\"code\"] == \"UNAUTHENTICATED\""
+    },
+    {
+      "name": "test_caller_isolation",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:121-130",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_caller_isolation(client):\n    body = client.get(\"/orders\", headers=BOB).json()\n    assert body[\"total\"] == 5\n    assert {item[\"id\"] for item in body[\"items\"]} == {\n        \"o-2001\",\n        \"o-2002\",\n        \"o-2003\",\n        \"o-2004\",\n        \"o-2005\",\n    }"
+    },
+    {
+      "name": "test_get_single_order",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:133-139",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_get_single_order(client):\n    resp = client.get(\"/orders/o-1001\", headers=ALICE)\n    assert resp.status_code == 200\n    body = resp.json()\n    assert body[\"id\"] == \"o-1001\"\n    assert body[\"status\"] == \"pending\"\n    assert body[\"amount\"] == \"120.00\""
+    },
+    {
+      "name": "test_get_unknown_order",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:142-145",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_get_unknown_order(client):\n    resp = client.get(\"/orders/o-9999\", headers=ALICE)\n    assert resp.status_code == 404\n    assert resp.json()[\"error\"][\"code\"] == \"ORDER_NOT_FOUND\""
+    },
+    {
+      "name": "test_get_foreign_order_is_not_disclosed",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:148-151",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_get_foreign_order_is_not_disclosed(client):\n    resp = client.get(\"/orders/o-1001\", headers=BOB)\n    assert resp.status_code == 404\n    assert resp.json()[\"error\"][\"code\"] == \"ORDER_NOT_FOUND\""
+    },
+    {
+      "name": "test_item_shape",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:154-156",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_item_shape(client):\n    item = client.get(\"/orders\", headers=ALICE).json()[\"items\"][0]\n    assert set(item) == {\"id\", \"user_id\", \"status\", \"amount\", \"currency\", \"created_at\"}"
+    },
+    {
+      "name": "test_unknown_query_parameters_are_ignored",
+      "suite": "regression",
+      "path": "demo/tests/regression/test_orders_regression.py",
+      "citation": "demo/tests/regression/test_orders_regression.py:159-161",
+      "score": 0.0,
+      "requirements": [],
+      "reason": "regression suite (enumerated)",
+      "excerpt": "def test_unknown_query_parameters_are_ignored(client):\n    body = client.get(\"/orders\", params={\"unknown_param\": \"x\"}, headers=ALICE).json()\n    assert body[\"total\"] == 7"
+    }
+  ],
+  "state": {
+    "available": true,
+    "scope_key": "sddctx-orders-filters-v1",
+    "db_path": "/mnt/d/oceanbase/work-eco/repo/minimax/.data/powercontext/pc.db",
+    "record_count": 0,
+    "done": [],
+    "todo": [],
+    "verification": [],
+    "decisions": [],
+    "next_action": null,
+    "prepared_context": null,
+    "prepared_status": "empty",
+    "records": []
+  },
+  "sources": {
+    "material_store": "seekdb",
+    "state_store": "PowerContext builtin runtime @ /mnt/d/oceanbase/work-eco/repo/minimax/.data/powercontext/pc.db",
+    "db_stats": {
+      "spec": 9,
+      "code": 15,
+      "test": 24
+    }
+  },
+  "context_text": "=== TASK ===\n# 任务：为订单查询接口增加筛选能力（orders-filters-v2）\n\n## 任务目标\n\n为 `GET /orders` 增加四个可选筛选参数，并实现组合语义：\n\n- `status`：按订单状态筛选（REQ-ORD-006）\n- `created_after` / `created_before`：按下单时间范围筛选，两端包含（REQ-ORD-007）\n- `min_amount`：按金额下限筛选，包含边界（REQ-ORD-008）\n- 多个筛选参数可组合（REQ-ORD-009）\n\n非法筛选参数必须返回 400，统一使用错误信封且 `code=INVALID_FILTER`（REQ-ORD-005）。\n\n## 依据（生效规格）\n\n`specs/orders.md` v2.0：REQ-ORD-006、REQ-ORD-007、REQ-ORD-008、REQ-ORD-009，\n以及验收映射表。\n\n## 必须保持（回归约束）\n\n- REQ-ORD-001 分页默认值与上下限、REQ-ORD-002 调用者隔离、REQ-ORD-003 排序、\n  REQ-ORD-004 单条订单语义、REQ-ORD-005 错误信封。\n- CONSTRAINTS C1：未提供新参数时输出与 v1.0 逐字段一致。\n- CONSTRAINTS C2：调用者隔离不可退化。\n- CONSTRAINTS C4：`total` 是过滤后、分页前的数量。\n- CONSTRAINTS C5：未知查询参数必须被忽略。\n\n## 修改范围\n\n只修改 `app/` 下的实现代码（`routes.py`、`service.py` 等）。\n不要修改 `tests/`（目标测试与回归测试由测试方提供，修改测试视为无效实现）。\n\n## 验收\n\n1. `pytest tests/target -q` 全部通过（修改前应全部失败）。\n2. `pytest tests/regression -q` 全部通过（修改前后都必须通过）。\n3. 目标测试与回归测试使用同一份测试文件，不允许删除断言或修改预期。\n\n=== APPLICABLE SPECIFICATIONS ===\n[SPEC 1] REQ-ORD-001 列表分页\ncitation: demo/specs/orders.md:15-23\n### REQ-ORD-001 列表分页\n\n`GET /orders` 返回当前调用者订单的分页结果。\n\n- 响应体固定为 `{\"items\": [...], \"total\": <int>, \"limit\": <int>, \"offset\": <int>}`。\n- `limit` 默认 20，取值范围 1–100（含两端）。\n- `offset` 默认 0，必须 `>= 0`。\n- `total` 是过滤后、分页前的订单总数。\n- 违反上述约束返回 400，`code=INVALID_PAGINATION`，`field` 为 `limit` 或 `offset`。\n\n[SPEC 2] REQ-ORD-002 调用者隔离\ncitation: demo/specs/orders.md:25-28\n### REQ-ORD-002 调用者隔离\n\n- 请求必须携带 `X-User-Id` 请求头；缺失或全空白返回 401，`code=UNAUTHENTICATED`。\n- 列表与单条查询都只能看到该调用者自己的订单，任何响应不得泄露他人订单的存在或内容。\n\n[SPEC 3] REQ-ORD-003 排序\ncitation: demo/specs/orders.md:30-33\n### REQ-ORD-003 排序\n\n- `sort` 可选值：`created_at_desc`（默认）、`created_at_asc`、`amount_desc`。\n- 非法值返回 400，`code=INVALID_SORT`，`field=sort`。\n\n[SPEC 4] REQ-ORD-004 单条订单\ncitation: demo/specs/orders.md:35-37\n### REQ-ORD-004 单条订单\n\n- `GET /orders/{order_id}` 返回该订单；订单不存在或不属于调用者时返回 404，`code=ORDER_NOT_FOUND`。\n\n[SPEC 5] REQ-ORD-005 错误信封\ncitation: demo/specs/orders.md:39-42\n### REQ-ORD-005 错误信封\n\n- 所有 4xx 响应体统一为 `{\"error\": {\"code\": \"...\", \"message\": \"...\", \"field\": \"...\"}}`；\n  `field` 只在字段级错误时出现。\n\n[SPEC 6] REQ-ORD-006 状态筛选（v2.0 新增）\ncitation: demo/specs/orders.md:44-49\n### REQ-ORD-006 状态筛选（v2.0 新增）\n\n- `GET /orders` 支持可选查询参数 `status`，取值 `pending`、`paid`、`shipped`、`cancelled`。\n- 提供时只返回该状态的订单；省略时不按状态过滤。\n- 非法值（大小写不敏感比较也不匹配）返回 400，`code=INVALID_FILTER`，`field=status`。\n- 实现要点：在 `list_orders` 的过滤阶段应用，不能影响 `total` 的语义。\n\n[SPEC 7] REQ-ORD-007 创建时间范围筛选（v2.0 新增）\ncitation: demo/specs/orders.md:51-58\n### REQ-ORD-007 创建时间范围筛选（v2.0 新增）\n\n- 支持可选参数 `created_after`、`created_before`，接受 ISO-8601 日期（`2026-09-05`）或带时区\n  日期时间（`2026-09-05T00:00:00Z`）；只给日期时按当天 00:00:00 UTC 解释。\n- 语义：`created_after <= created_at <= created_before`，两端都包含；只给一端时另一端不限制。\n- 无法解析返回 400，`code=INVALID_FILTER`，`field` 为对应参数名。\n- `created_after` 晚于 `created_before` 返回 400，`code=INVALID_FILTER`，`field=created_after`。\n- 实现要点：新增 `parse_created_bounds` 校验函数，与既有 `parse_pagination`/`parse_sort` 风格一致。\n\n[SPEC 8] REQ-ORD-008 金额下限筛选（v2.0 新增）\ncitation: demo/specs/orders.md:60-65\n### REQ-ORD-008 金额下限筛选（v2.0 新增）\n\n- 支持可选参数 `min_amount`，十进制数，必须 `>= 0`。\n- 语义：`amount >= min_amount`（包含边界）。\n- 非数字或负数返回 400，`code=INVALID_FILTER`，`field=min_amount`。\n- 实现要点：新增 `parse_min_amount` 校验函数，使用 `Decimal` 比较，避免浮点误差。\n\n[SPEC 9] REQ-ORD-009 筛选组合（v2.0 新增）\ncitation: demo/specs/orders.md:67-71\n### REQ-ORD-009 筛选组合（v2.0 新增）\n\n- 任意筛选参数可以组合，结果必须同时满足所有条件。\n- `total` 反映组合过滤后的数量，分页与排序在过滤之后应用。\n- 未提供任何筛选参数时，输出必须与 v1.0 完全一致。\n\n=== CODE TO MODIFY ===\n[CODE 1] parse_pagination  (demo/app/service.py:43-57)\ndef parse_pagination(limit_raw: str | None, offset_raw: str | None) -> tuple[int, int]:\n    \"\"\"REQ-ORD-001: limit defaults to 20 and must stay in 1..100; offset >= 0.\"\"\"\n\n    limit = _parse_int(limit_raw, default=DEFAULT_LIMIT, field=\"limit\")\n    offset = _parse_int(offset_raw, default=0, field=\"offset\")\n    if limit < 1 or limit > MAX_LIMIT:\n        raise ApiError(\n            400,\n            \"INVALID_PAGINATION\",\n            f\"limit must be between 1 and {MAX_LIMIT}\",\n            field=\"limit\",\n        )\n    if offset < 0:\n        raise ApiError(400, \"INVALID_PAGINATION\", \"offset must be greater than or equal to 0\", field=\"offset\")\n    return limit, offset\n\n[CODE 2] _sort_orders  (demo/app/service.py:75-80)\ndef _sort_orders(orders: list[Order], sort: str) -> list[Order]:\n    if sort == \"created_at_asc\":\n        return sorted(orders, key=lambda order: order.created_at)\n    if sort == \"amount_desc\":\n        return sorted(orders, key=lambda order: order.amount, reverse=True)\n    return sorted(orders, key=lambda order: order.created_at, reverse=True)\n\n[CODE 3] parse_sort  (demo/app/service.py:60-72)\ndef parse_sort(sort_raw: str | None) -> str:\n    \"\"\"REQ-ORD-003: ``sort`` is one of the documented keys.\"\"\"\n\n    if sort_raw is None or sort_raw == \"\":\n        return SORT_KEYS[0]\n    if sort_raw not in SORT_KEYS:\n        raise ApiError(\n            400,\n            \"INVALID_SORT\",\n            f\"sort must be one of {', '.join(SORT_KEYS)}\",\n            field=\"sort\",\n        )\n    return sort_raw\n\n[CODE 4] get_order_route  (demo/app/routes.py:37-44)\n@router.get(\"/orders/{order_id}\")\ndef get_order_route(\n    request: Request,\n    order_id: str,\n    x_user_id: str | None = Header(default=None, alias=\"X-User-Id\"),\n) -> dict[str, str]:\n    user_id = require_user(x_user_id)\n    return get_order(request.app.state.repo, user_id, order_id)\n\n[CODE 5] get_order  (demo/app/service.py:104-110)\ndef get_order(repo: OrderRepository, user_id: str, order_id: str) -> dict[str, str]:\n    \"\"\"REQ-ORD-004: unknown or foreign orders are a plain 404.\"\"\"\n\n    order = repo.get_for_user(user_id, order_id)\n    if order is None:\n        raise ApiError(404, \"ORDER_NOT_FOUND\", f\"order {order_id} was not found\", field=\"order_id\")\n    return order.to_dict()\n\n[CODE 6] list_orders  (demo/app/service.py:83-101)\ndef list_orders(\n    repo: OrderRepository,\n    user_id: str,\n    *,\n    limit: int,\n    offset: int,\n    sort: str,\n) -> dict[str, object]:\n    \"\"\"Return one page of the caller's orders (REQ-ORD-001/002/003).\"\"\"\n\n    orders = _sort_orders(repo.list_for_user(user_id), sort)\n    total = len(orders)\n    page = orders[offset : offset + limit]\n    return {\n        \"items\": [order.to_dict() for order in page],\n        \"total\": total,\n        \"limit\": limit,\n        \"offset\": offset,\n    }\n\n[CODE 7] create_app  (demo/app/main.py:13-22)\ndef create_app(repository: OrderRepository | None = None) -> FastAPI:\n    app = FastAPI(title=\"orders-service\", version=\"1.0.0\")\n    app.state.repo = repository if repository is not None else OrderRepository()\n    app.include_router(router)\n\n    @app.exception_handler(ApiError)\n    async def _handle_api_error(_request: Request, exc: ApiError) -> JSONResponse:\n        return JSONResponse(status_code=exc.status_code, content=exc.to_payload())\n\n    return app\n\n[CODE 8] ApiError  (demo/app/errors.py:6-27)\nclass ApiError(Exception):\n    \"\"\"Raised by the service layer; rendered by the FastAPI exception handler.\"\"\"\n\n    def __init__(\n        self,\n        status_code: int,\n        code: str,\n        message: str,\n        *,\n        field: str | None = None,\n    ) -> None:\n        super().__init__(message)\n        self.status_code = status_code\n        self.code = code\n        self.message = message\n        self.field = field\n\n    def to_payload(self) -> dict[str, object]:\n        error: dict[str, object] = {\"code\": self.code, \"message\": self.message}\n        if self.field is not None:\n            error[\"field\"] = self.field\n        return {\"error\": error}\n\n[CODE 9] health  (demo/app/routes.py:12-14)\n@router.get(\"/health\")\ndef health() -> dict[str, str]:\n    return {\"status\": \"ok\"}\n\n[CODE 10] Order  (demo/app/models.py:15-37)\n@dataclass(frozen=True)\nclass Order:\n    \"\"\"A single order owned by exactly one user.\"\"\"\n\n    id: str\n    user_id: str\n    status: str\n    amount: Decimal\n    currency: str\n    created_at: datetime\n\n    def to_dict(self) -> dict[str, str]:\n        created = self.created_at.isoformat()\n        if created.endswith(\"+00:00\"):\n            created = created[: -len(\"+00:00\")] + \"Z\"\n        return {\n            \"id\": self.id,\n            \"user_id\": self.user_id,\n            \"status\": self.status,\n            \"amount\": format(self.amount, \".2f\"),\n            \"currency\": self.currency,\n            \"created_at\": created,\n        }\n\n----- FULL FILE: demo/app/service.py -----\n\"\"\"Order query service.\n\nImplemented requirements (see ``specs/orders.md``):\n\n* REQ-ORD-001  list pagination\n* REQ-ORD-002  caller isolation\n* REQ-ORD-003  sorting\n* REQ-ORD-004  single order lookup\n\nFiltering (REQ-ORD-006 .. REQ-ORD-009) is scheduled for v2.0 and is not\nimplemented in this version.\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom .errors import ApiError\nfrom .models import DEFAULT_LIMIT, MAX_LIMIT, SORT_KEYS, Order\nfrom .repo import OrderRepository\n\n\ndef require_user(x_user_id: str | None) -> str:\n    \"\"\"REQ-ORD-002: every request must identify the caller.\"\"\"\n\n    if x_user_id is None or not x_user_id.strip():\n        raise ApiError(401, \"UNAUTHENTICATED\", \"X-User-Id header is required\", field=\"X-User-Id\")\n    return x_user_id.strip()\n\n\ndef _parse_int(raw: str | None, *, default: int, field: str) -> int:\n    if raw is None or raw == \"\":\n        return default\n    try:\n        return int(raw)\n    except (TypeError, ValueError):\n        raise ApiError(\n            400,\n            \"INVALID_PAGINATION\",\n            f\"{field} must be an integer\",\n            field=field,\n        ) from None\n\n\ndef parse_pagination(limit_raw: str | None, offset_raw: str | None) -> tuple[int, int]:\n    \"\"\"REQ-ORD-001: limit defaults to 20 and must stay in 1..100; offset >= 0.\"\"\"\n\n    limit = _parse_int(limit_raw, default=DEFAULT_LIMIT, field=\"limit\")\n    offset = _parse_int(offset_raw, default=0, field=\"offset\")\n    if limit < 1 or limit > MAX_LIMIT:\n        raise ApiError(\n            400,\n            \"INVALID_PAGINATION\",\n            f\"limit must be between 1 and {MAX_LIMIT}\",\n            field=\"limit\",\n        )\n    if offset < 0:\n        raise ApiError(400, \"INVALID_PAGINATION\", \"offset must be greater than or equal to 0\", field=\"offset\")\n    return limit, offset\n\n\ndef parse_sort(sort_raw: str | None) -> str:\n    \"\"\"REQ-ORD-003: ``sort`` is one of the documented keys.\"\"\"\n\n    if sort_raw is None or sort_raw == \"\":\n        return SORT_KEYS[0]\n    if sort_raw not in SORT_KEYS:\n        raise ApiError(\n            400,\n            \"INVALID_SORT\",\n            f\"sort must be one of {', '.join(SORT_KEYS)}\",\n            field=\"sort\",\n        )\n    return sort_raw\n\n\ndef _sort_orders(orders: list[Order], sort: str) -> list[Order]:\n    if sort == \"created_at_asc\":\n        return sorted(orders, key=lambda order: order.created_at)\n    if sort == \"amount_desc\":\n        return sorted(orders, key=lambda order: order.amount, reverse=True)\n    return sorted(orders, key=lambda order: order.created_at, reverse=True)\n\n\ndef list_orders(\n    repo: OrderRepository,\n    user_id: str,\n    *,\n    limit: int,\n    offset: int,\n    sort: str,\n) -> dict[str, object]:\n    \"\"\"Return one page of the caller's orders (REQ-ORD-001/002/003).\"\"\"\n\n    orders = _sort_orders(repo.list_for_user(user_id), sort)\n    total = len(orders)\n    page = orders[offset : offset + limit]\n    return {\n        \"items\": [order.to_dict() for order in page],\n        \"total\": total,\n        \"limit\": limit,\n        \"offset\": offset,\n    }\n\n\ndef get_order(repo: OrderRepository, user_id: str, order_id: str) -> dict[str, str]:\n    \"\"\"REQ-ORD-004: unknown or foreign orders are a plain 404.\"\"\"\n\n    order = repo.get_for_user(user_id, order_id)\n    if order is None:\n        raise ApiError(404, \"ORDER_NOT_FOUND\", f\"order {order_id} was not found\", field=\"order_id\")\n    return order.to_dict()\n----- END FILE: demo/app/service.py -----\n\n----- FULL FILE: demo/app/routes.py -----\n\"\"\"HTTP routes for the orders service.\"\"\"\n\nfrom __future__ import annotations\n\nfrom fastapi import APIRouter, Header, Request\n\nfrom .service import get_order, list_orders, parse_pagination, parse_sort, require_user\n\nrouter = APIRouter()\n\n\n@router.get(\"/health\")\ndef health() -> dict[str, str]:\n    return {\"status\": \"ok\"}\n\n\n@router.get(\"/orders\")\ndef list_orders_route(\n    request: Request,\n    limit: str | None = None,\n    offset: str | None = None,\n    sort: str | None = None,\n    x_user_id: str | None = Header(default=None, alias=\"X-User-Id\"),\n) -> dict[str, object]:\n    user_id = require_user(x_user_id)\n    limit_value, offset_value = parse_pagination(limit, offset)\n    sort_value = parse_sort(sort)\n    return list_orders(\n        request.app.state.repo,\n        user_id,\n        limit=limit_value,\n        offset=offset_value,\n        sort=sort_value,\n    )\n\n\n@router.get(\"/orders/{order_id}\")\ndef get_order_route(\n    request: Request,\n    order_id: str,\n    x_user_id: str | None = Header(default=None, alias=\"X-User-Id\"),\n) -> dict[str, str]:\n    user_id = require_user(x_user_id)\n    return get_order(request.app.state.repo, user_id, order_id)\n----- END FILE: demo/app/routes.py -----\n\n----- FULL FILE: demo/app/main.py -----\n\"\"\"Application factory for the orders service.\"\"\"\n\nfrom __future__ import annotations\n\nfrom fastapi import FastAPI, Request\nfrom fastapi.responses import JSONResponse\n\nfrom .errors import ApiError\nfrom .repo import OrderRepository\nfrom .routes import router\n\n\ndef create_app(repository: OrderRepository | None = None) -> FastAPI:\n    app = FastAPI(title=\"orders-service\", version=\"1.0.0\")\n    app.state.repo = repository if repository is not None else OrderRepository()\n    app.include_router(router)\n\n    @app.exception_handler(ApiError)\n    async def _handle_api_error(_request: Request, exc: ApiError) -> JSONResponse:\n        return JSONResponse(status_code=exc.status_code, content=exc.to_payload())\n\n    return app\n\n\napp = create_app()\n----- END FILE: demo/app/main.py -----\n\n----- FULL FILE: demo/app/errors.py -----\n\"\"\"Error envelope shared by every endpoint (REQ-ORD-005).\"\"\"\n\nfrom __future__ import annotations\n\n\nclass ApiError(Exception):\n    \"\"\"Raised by the service layer; rendered by the FastAPI exception handler.\"\"\"\n\n    def __init__(\n        self,\n        status_code: int,\n        code: str,\n        message: str,\n        *,\n        field: str | None = None,\n    ) -> None:\n        super().__init__(message)\n        self.status_code = status_code\n        self.code = code\n        self.message = message\n        self.field = field\n\n    def to_payload(self) -> dict[str, object]:\n        error: dict[str, object] = {\"code\": self.code, \"message\": self.message}\n        if self.field is not None:\n            error[\"field\"] = self.field\n        return {\"error\": error}\n----- END FILE: demo/app/errors.py -----\n\n----- FULL FILE: demo/app/models.py -----\n\"\"\"Domain models for the orders service.\"\"\"\n\nfrom __future__ import annotations\n\nfrom dataclasses import dataclass\nfrom datetime import datetime\nfrom decimal import Decimal\n\nORDER_STATUSES: tuple[str, ...] = (\"pending\", \"paid\", \"shipped\", \"cancelled\")\nSORT_KEYS: tuple[str, ...] = (\"created_at_desc\", \"created_at_asc\", \"amount_desc\")\nDEFAULT_LIMIT = 20\nMAX_LIMIT = 100\n\n\n@dataclass(frozen=True)\nclass Order:\n    \"\"\"A single order owned by exactly one user.\"\"\"\n\n    id: str\n    user_id: str\n    status: str\n    amount: Decimal\n    currency: str\n    created_at: datetime\n\n    def to_dict(self) -> dict[str, str]:\n        created = self.created_at.isoformat()\n        if created.endswith(\"+00:00\"):\n            created = created[: -len(\"+00:00\")] + \"Z\"\n        return {\n            \"id\": self.id,\n            \"user_id\": self.user_id,\n            \"status\": self.status,\n            \"amount\": format(self.amount, \".2f\"),\n            \"currency\": self.currency,\n            \"created_at\": created,\n        }\n----- END FILE: demo/app/models.py -----\n\n=== TESTS ===\n[TEST 1] (target) test_filter_by_status  citation: demo/tests/target/test_orders_filters_target.py:13-19  requirements: REQ-ORD-006\n[TEST 2] (target) test_invalid_filter_values  citation: demo/tests/target/test_orders_filters_target.py:48-60  requirements: REQ-ORD-006\n[TEST 3] (target) test_filter_by_created_range_inclusive  citation: demo/tests/target/test_orders_filters_target.py:22-28  requirements: REQ-ORD-007\n[TEST 4] (target) test_invalid_created_range  citation: demo/tests/target/test_orders_filters_target.py:63-75  requirements: REQ-ORD-007\n[TEST 5] (target) test_filter_by_min_amount_inclusive  citation: demo/tests/target/test_orders_filters_target.py:31-36  requirements: REQ-ORD-008\n[TEST 6] (target) test_filters_compose  citation: demo/tests/target/test_orders_filters_target.py:39-45  requirements: REQ-ORD-009\n[TEST 7] (regression) test_health_endpoint  citation: demo/tests/regression/test_orders_regression.py:13-16  requirements: -\n[TEST 8] (regression) test_default_pagination_and_order  citation: demo/tests/regression/test_orders_regression.py:19-34  requirements: -\n[TEST 9] (regression) test_pagination_slice  citation: demo/tests/regression/test_orders_regression.py:37-42  requirements: -\n[TEST 10] (regression) test_pagination_beyond_end  citation: demo/tests/regression/test_orders_regression.py:45-48  requirements: -\n[TEST 11] (regression) test_limit_upper_bound  citation: demo/tests/regression/test_orders_regression.py:51-57  requirements: -\n[TEST 12] (regression) test_limit_lower_bound_and_type  citation: demo/tests/regression/test_orders_regression.py:60-64  requirements: -\n[TEST 13] (regression) test_negative_offset  citation: demo/tests/regression/test_orders_regression.py:67-72  requirements: -\n[TEST 14] (regression) test_sort_created_at_asc  citation: demo/tests/regression/test_orders_regression.py:75-85  requirements: -\n[TEST 15] (regression) test_sort_amount_desc  citation: demo/tests/regression/test_orders_regression.py:88-98  requirements: -\n[TEST 16] (regression) test_invalid_sort  citation: demo/tests/regression/test_orders_regression.py:101-106  requirements: -\n[TEST 17] (regression) test_missing_user_header  citation: demo/tests/regression/test_orders_regression.py:109-112  requirements: -\n[TEST 18] (regression) test_blank_user_header  citation: demo/tests/regression/test_orders_regression.py:115-118  requirements: -\n[TEST 19] (regression) test_caller_isolation  citation: demo/tests/regression/test_orders_regression.py:121-130  requirements: -\n[TEST 20] (regression) test_get_single_order  citation: demo/tests/regression/test_orders_regression.py:133-139  requirements: -\n[TEST 21] (regression) test_get_unknown_order  citation: demo/tests/regression/test_orders_regression.py:142-145  requirements: -\n[TEST 22] (regression) test_get_foreign_order_is_not_disclosed  citation: demo/tests/regression/test_orders_regression.py:148-151  requirements: -\n[TEST 23] (regression) test_item_shape  citation: demo/tests/regression/test_orders_regression.py:154-156  requirements: -\n[TEST 24] (regression) test_unknown_query_parameters_are_ignored  citation: demo/tests/regression/test_orders_regression.py:159-161  requirements: -\n\n=== TASK STATE (PowerContext) ===\nscope_key: sddctx-orders-filters-v1  db: /mnt/d/oceanbase/work-eco/repo/minimax/.data/powercontext/pc.db\ndone: []\ntodo: []\nverification: []\n",
+  "context_sha256": "bf2be9963af6ad3d9e04ec73c578e1a565a6017abdcf27b6feaa64fb15cb05b4"
+}

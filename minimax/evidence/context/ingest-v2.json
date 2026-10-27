@@ -1,0 +1,13 @@
+chunks ingested : 54
+counts          : {"spec": 9, "code": 21, "test": 24}
+archive         : /mnt/d/oceanbase/work-eco/repo/minimax/.data/ingest/ingest-20261027T142447Z.jsonl
+store stats     : {"spec": 9, "code": 21, "test": 24}
+{
+  "chunks": 54,
+  "counts": {
+    "spec": 9,
+    "code": 21,
+    "test": 24
+  },
+  "archive": "/mnt/d/oceanbase/work-eco/repo/minimax/.data/ingest/ingest-20261027T142447Z.jsonl"
+}

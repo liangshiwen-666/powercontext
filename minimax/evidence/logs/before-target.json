@@ -1,0 +1,20 @@
+{
+  "schema": "sddctx.test-log/v1",
+  "suite": "tests/target",
+  "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/target -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/before-target.junit.xml",
+  "cwd": "/mnt/d/oceanbase/work-eco/repo/minimax/evidence/tmp/before-run-20261027T142419Z/demo",
+  "started_at": "2026-10-27T14:24:21Z",
+  "duration_s": 2.377,
+  "timed_out": false,
+  "exit_code": 1,
+  "counts": {
+    "passed": 0,
+    "failed": 6,
+    "errors": 0,
+    "skipped": 0
+  },
+  "junit": "/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/before-target.junit.xml",
+  "stdout": "FFFFFF                                                                   [100%]\n=================================== FAILURES ===================================\n____________________________ test_filter_by_status _____________________________\ntests/target/test_orders_filters_target.py:17: in test_filter_by_status\n    assert body[\"total\"] == 3\nE   assert 7 == 3\n____________________ test_filter_by_created_range_inclusive ____________________\ntests/target/test_orders_filters_target.py:27: in test_filter_by_created_range_inclusive\n    assert body[\"total\"] == 4\nE   assert 7 == 4\n_____________________ test_filter_by_min_amount_inclusive ______________________\ntests/target/test_orders_filters_target.py:35: in test_filter_by_min_amount_inclusive\n    assert body[\"total\"] == 3\nE   assert 7 == 3\n_____________________________ test_filters_compose _____________________________\ntests/target/test_orders_filters_target.py:44: in test_filters_compose\n    assert body[\"total\"] == 2\nE   assert 7 == 2\n__________________________ test_invalid_filter_values __________________________\ntests/target/test_orders_filters_target.py:57: in test_invalid_filter_values\n    assert resp.status_code == 400, params\nE   AssertionError: {'status': 'bogus'}\nE   assert 200 == 400\nE    +  where 200 = <Response [200 OK]>.status_code\n__________________________ test_invalid_created_range __________________________\ntests/target/test_orders_filters_target.py:72: in test_invalid_created_range\n    assert resp.status_code == 400, params\nE   AssertionError: {'created_after': 'not-a-date'}\nE   assert 200 == 400\nE    +  where 200 = <Response [200 OK]>.status_code\n=========================== short test summary info ============================\nFAILED tests/target/test_orders_filters_target.py::test_filter_by_status - as...\nFAILED tests/target/test_orders_filters_target.py::test_filter_by_created_range_inclusive\nFAILED tests/target/test_orders_filters_target.py::test_filter_by_min_amount_inclusive\nFAILED tests/target/test_orders_filters_target.py::test_filters_compose - ass...\nFAILED tests/target/test_orders_filters_target.py::test_invalid_filter_values\nFAILED tests/target/test_orders_filters_target.py::test_invalid_created_range\n6 failed in 1.14s\n",
+  "stdout_sha256": "e763c049d7786107cd19c1c2e54fa70fb55688b84cefc5baf293b1ed0ee69e81",
+  "stderr": ""
+}

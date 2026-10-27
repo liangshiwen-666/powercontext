@@ -1,0 +1,20 @@
+{
+  "schema": "sddctx.test-log/v1",
+  "suite": "tests/regression",
+  "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/regression -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/before-regression.junit.xml",
+  "cwd": "/mnt/d/oceanbase/work-eco/repo/minimax/evidence/tmp/before-run-20261027T142419Z/demo",
+  "started_at": "2026-10-27T14:24:23Z",
+  "duration_s": 2.155,
+  "timed_out": false,
+  "exit_code": 0,
+  "counts": {
+    "passed": 18,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "junit": "/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/before-regression.junit.xml",
+  "stdout": "..................                                                       [100%]\n18 passed in 0.70s\n",
+  "stdout_sha256": "3164293340f05df777a16ff6a6d93c653ecf459579bcc20442444859d1220177",
+  "stderr": ""
+}
