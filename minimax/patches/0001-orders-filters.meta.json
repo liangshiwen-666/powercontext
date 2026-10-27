@@ -1,27 +1,51 @@
 {
   "schema": "sddctx.patch-generation/v1",
-  "generated_at": "20261027T142349Z",
+  "generated_at": "20261027T144450Z",
   "generation_mode": "live",
   "model": "MiniMax-M3.1-Flash",
   "endpoint": "https://api.minimax.cn/v1/chat/completions",
-  "context_pack": "evidence/context/orders-filters.task-20261027T142328Z.json",
+  "context_pack": "evidence/context/orders-filters.task-20261027T144415Z.json",
   "context_sha256": "bf2be9963af6ad3d9e04ec73c578e1a565a6017abdcf27b6feaa64fb15cb05b4",
   "patch_path": "patches/0001-orders-filters.patch",
-  "patch_sha256": "9c397d810af667938a8ad0e26c88abe7f221c808e797b987df69e0cc48720679",
+  "patch_sha256": "71de0a956ba7a67c1d9c923ff50e3081c3d4d04cbe7aa35c27ba28c63a0f1f78",
   "attempts": [
     {
       "attempt": 1,
-      "response_sha256": "cc7edcbd69d9b6cb872b3e4c85bf3a1eebdf04e56d53c06adf92a8429b6f510b",
+      "response_sha256": "f7f13b7908ddcc1d4c4c2a95a491caca3f3160a0cc93b7c0cc93a88415f1ee92",
       "usage": {
-        "total_tokens": 10528,
+        "total_tokens": 11626,
         "total_characters": 0,
-        "prompt_tokens": 6603,
-        "completion_tokens": 3925,
+        "prompt_tokens": 6590,
+        "completion_tokens": 5036,
         "completion_tokens_details": {
-          "reasoning_tokens": 1556
+          "reasoning_tokens": 2766
         },
         "prompt_tokens_details": {
-          "cached_tokens": 6528
+          "cached_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "mode": "file-writes",
+      "edited_files": [
+        "app/routes.py",
+        "app/service.py"
+      ],
+      "rejected_paths": [],
+      "record": "records/minimax/20261027T144440346148Z-orders-filters-attempt1.json"
+    },
+    {
+      "attempt": 2,
+      "response_sha256": "5631c2b800b4e2e3a90241838ab546e4e9b287b5b03c7b40f75f5100d2efdb07",
+      "usage": {
+        "total_tokens": 11581,
+        "total_characters": 0,
+        "prompt_tokens": 8909,
+        "completion_tokens": 2672,
+        "completion_tokens_details": {
+          "reasoning_tokens": 369
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 6400
         }
       },
       "finish_reason": "stop",
@@ -38,8 +62,8 @@
         "errors": 0,
         "skipped": 0
       },
-      "patch_sha256": "9c397d810af667938a8ad0e26c88abe7f221c808e797b987df69e0cc48720679",
-      "record": "records/minimax/20261027T142346872087Z-orders-filters-attempt1.json"
+      "patch_sha256": "71de0a956ba7a67c1d9c923ff50e3081c3d4d04cbe7aa35c27ba28c63a0f1f78",
+      "record": "records/minimax/20261027T144449083059Z-orders-filters-attempt2.json"
     }
   ]
 }

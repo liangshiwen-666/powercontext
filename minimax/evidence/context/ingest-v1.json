@@ -1,13 +1,13 @@
-chunks ingested : 50
-counts          : {"spec": 5, "code": 21, "test": 24}
-archive         : /mnt/d/oceanbase/work-eco/repo/minimax/.data/ingest/ingest-20261027T142442Z.jsonl
-store stats     : {"spec": 5, "code": 21, "test": 24}
+chunks ingested : 49
+counts          : {"spec": 5, "code": 20, "test": 24}
+archive         : /mnt/d/oceanbase/work-eco/repo/minimax/.data/ingest/ingest-20261027T144547Z.jsonl
+store stats     : {"spec": 5, "code": 20, "test": 24}
 {
-  "chunks": 50,
+  "chunks": 49,
   "counts": {
     "spec": 5,
-    "code": 21,
+    "code": 20,
     "test": 24
   },
-  "archive": "/mnt/d/oceanbase/work-eco/repo/minimax/.data/ingest/ingest-20261027T142442Z.jsonl"
+  "archive": "/mnt/d/oceanbase/work-eco/repo/minimax/.data/ingest/ingest-20261027T144547Z.jsonl"
 }

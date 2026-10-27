@@ -75,6 +75,20 @@ python -m sddctx run --live        # 生成 → 应用 → 测试 → 记录，�
 | PowerContext | PyPI `powercontext==1.4.1`，进程内 `builtin` runtime + 文件型 SQLite（`sqlite+aiosqlite:////.../pc.db`） |
 | 业务工程 | Python 3.11+ / FastAPI / pytest |
 
+## 第三方组件与来源
+
+| 组件 | 来源 / 许可 | 在本作品中的用途 | 是否修改 |
+|---|---|---|---|
+| PowerContext 1.4.1 | PyPI `powercontext`（Apache-2.0，<https://github.com/oceanbase/powercontext>） | 任务状态持久化与跨进程复用（进程内 builtin runtime + 文件 SQLite） | 未修改源码，仅调用公开 API |
+| seekdb 1.4.0 | OceanBase 社区发行包 / `oceanbase/seekdb` 镜像 | 工程资料（规格/代码/测试）存储与中文全文检索 | 未修改 |
+| MiniMax API | MiniMax 开放平台（`MiniMax-M3.1-Flash`，OpenAI 兼容 HTTP） | 依据上下文生成代码修改 | — |
+| `demo/`、`sddctx/` | 本作品原创 | 业务工程与上下文模块本体 | — |
+
+## 平台提交信息
+
+测评平台的仓库地址锁定为团队仓库 `https://github.com/liangshiwen-666/powercontext-fork.git`；
+本目录内容提交在分支 `2026-competition-ecosystem` 上，平台申报的 commit 以该分支的实际提交为准。
+
 ## 重置
 
 ```bash

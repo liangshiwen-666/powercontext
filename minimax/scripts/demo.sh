@@ -30,13 +30,16 @@ banner "2/6 restore a clean starting point (pre-change code, empty task state)"
 banner "3/6 full pipeline (ingest -> context -> patch replay -> verify -> state)"
 "$PYTHON" -m sddctx run --fresh
 
-banner "4/6 task state read back after the module process restarted"
+banner "4/7 task state read back after the module process restarted"
 "$PYTHON" -m sddctx state show
 
-banner "5/6 context pack preview (specs / code / tests / state)"
+banner "5/7 state readback evidence from a fresh process (records/powercontext/)"
+bash scripts/state-readback.sh
+
+banner "6/7 context pack preview (specs / code / tests / state)"
 "$PYTHON" -m sddctx context --print-text | head -120
 
-banner "6/6 evidence written under evidence/"
+banner "7/7 evidence written under evidence/"
 find evidence -maxdepth 2 -type f -print | sort
 
 echo

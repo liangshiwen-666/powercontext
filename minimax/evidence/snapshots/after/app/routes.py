@@ -39,8 +39,12 @@ def list_orders_route(
     limit_value, offset_value = parse_pagination(limit, offset)
     sort_value = parse_sort(sort)
     status_value = parse_status(status)
-    after_value, before_value = parse_created_bounds(created_after, created_before)
+    created_after_value, created_before_value = parse_created_bounds(
+        created_after,
+        created_before,
+    )
     min_amount_value = parse_min_amount(min_amount)
+
     return list_orders(
         request.app.state.repo,
         user_id,
@@ -48,8 +52,8 @@ def list_orders_route(
         offset=offset_value,
         sort=sort_value,
         status=status_value,
-        created_after=after_value,
-        created_before=before_value,
+        created_after=created_after_value,
+        created_before=created_before_value,
         min_amount=min_amount_value,
     )
 

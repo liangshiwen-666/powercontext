@@ -67,6 +67,7 @@ bash scripts/setup.sh
 | `python -m sddctx ingest [--specs DIR]` | 规格/代码/测试切块入 seekdb | `chunks`、归档 JSONL、库内计数 |
 | `python -m sddctx context [--task FILE] [--out FILE]` | **构造开发上下文** | 上下文包 JSON（规格条目/代码符号/测试/状态，全部带 `path:line` 引用） |
 | `python -m sddctx state show` | 读回 PowerContext 任务状态 | 记录列表 + prepared context |
+| `python -m sddctx state export --out FILE` | 在**新进程**中导出状态（重启复用证据） | `records/powercontext/state-readback.json` |
 | `python -m sddctx state save --entry kind:text` | 写入任务状态 | 记录引用 |
 | `python -m sddctx patch generate [--live]` | 取补丁（`--live` 调 MiniMax，默认重放） | `patches/*.patch` + `.meta.json` |
 | `python -m sddctx patch apply [--reverse] [--check-only]` | 应用/回退补丁 | apply 结果 |
@@ -97,7 +98,9 @@ cd demo && python -m pytest -q                     # 全绿（24 passed）
 python -m pytest tests -q
 ```
 
-日志统一带命令、退出码、计数与完整 stdout（`evidence/logs/*.json`、`evidence/logs/*.junit.xml`）。
+日志统一带命令、退出码、计数与完整 stdout（`evidence/logs/*.json`、`evidence/logs/*.junit.xml`），
+每条日志的 `code_version` 字段记录：`base_git_head`（提交分支基线）、`patch_sha256`（本次改动补丁）、
+`tree_state`（`before` / `after`），因此"命令 + 退出码 + 代码版本"可在同一份日志中核对。
 
 ## 6. 一键复现与 live 模式
 

@@ -1,6 +1,6 @@
 {
   "schema": "sddctx.context-pack/v1",
-  "generated_at": "2026-10-27T14:23:28Z",
+  "generated_at": "2026-10-27T14:45:23Z",
   "task": {
     "id": "orders-filters.task",
     "title": "任务：为订单查询接口增加筛选能力（orders-filters-v2）",
@@ -23,7 +23,7 @@
       "requirement_id": "REQ-ORD-001",
       "title": "列表分页",
       "citation": "demo/specs/orders.md:15-23",
-      "score": 2.0526,
+      "score": 2.2797,
       "required": true,
       "matched_by": "requirement:REQ-ORD-001",
       "excerpt": "### REQ-ORD-001 列表分页\n\n`GET /orders` 返回当前调用者订单的分页结果。\n\n- 响应体固定为 `{\"items\": [...], \"total\": <int>, \"limit\": <int>, \"offset\": <int>}`。\n- `limit` 默认 20，取值范围 1–100（含两端）。\n- `offset` 默认 0，必须 `>= 0`。\n- `total` 是过滤后、分页前的订单总数。\n- 违反上述约束返回 400，`code=INVALID_PAGINATION`，`field` 为 `limit` 或 `offset`。"
@@ -32,7 +32,7 @@
       "requirement_id": "REQ-ORD-002",
       "title": "调用者隔离",
       "citation": "demo/specs/orders.md:25-28",
-      "score": 2.7968,
+      "score": 3.0543,
       "required": true,
       "matched_by": "requirement:REQ-ORD-002",
       "excerpt": "### REQ-ORD-002 调用者隔离\n\n- 请求必须携带 `X-User-Id` 请求头；缺失或全空白返回 401，`code=UNAUTHENTICATED`。\n- 列表与单条查询都只能看到该调用者自己的订单，任何响应不得泄露他人订单的存在或内容。"
@@ -41,7 +41,7 @@
       "requirement_id": "REQ-ORD-003",
       "title": "排序",
       "citation": "demo/specs/orders.md:30-33",
-      "score": 3.7286,
+      "score": 3.988,
       "required": true,
       "matched_by": "requirement:REQ-ORD-003",
       "excerpt": "### REQ-ORD-003 排序\n\n- `sort` 可选值：`created_at_desc`（默认）、`created_at_asc`、`amount_desc`。\n- 非法值返回 400，`code=INVALID_SORT`，`field=sort`。"
@@ -50,7 +50,7 @@
       "requirement_id": "REQ-ORD-004",
       "title": "单条订单",
       "citation": "demo/specs/orders.md:35-37",
-      "score": 3.5733,
+      "score": 3.8351,
       "required": true,
       "matched_by": "requirement:REQ-ORD-004",
       "excerpt": "### REQ-ORD-004 单条订单\n\n- `GET /orders/{order_id}` 返回该订单；订单不存在或不属于调用者时返回 404，`code=ORDER_NOT_FOUND`。"
@@ -59,7 +59,7 @@
       "requirement_id": "REQ-ORD-005",
       "title": "错误信封",
       "citation": "demo/specs/orders.md:39-42",
-      "score": 4.1659,
+      "score": 4.4455,
       "required": true,
       "matched_by": "requirement:REQ-ORD-005",
       "excerpt": "### REQ-ORD-005 错误信封\n\n- 所有 4xx 响应体统一为 `{\"error\": {\"code\": \"...\", \"message\": \"...\", \"field\": \"...\"}}`；\n  `field` 只在字段级错误时出现。"
@@ -68,7 +68,7 @@
       "requirement_id": "REQ-ORD-006",
       "title": "状态筛选（v2.0 新增）",
       "citation": "demo/specs/orders.md:44-49",
-      "score": 2.0341,
+      "score": 2.2603,
       "required": true,
       "matched_by": "requirement:REQ-ORD-006",
       "excerpt": "### REQ-ORD-006 状态筛选（v2.0 新增）\n\n- `GET /orders` 支持可选查询参数 `status`，取值 `pending`、`paid`、`shipped`、`cancelled`。\n- 提供时只返回该状态的订单；省略时不按状态过滤。\n- 非法值（大小写不敏感比较也不匹配）返回 400，`code=INVALID_FILTER`，`field=status`。\n- 实现要点：在 `list_orders` 的过滤阶段应用，不能影响 `total` 的语义。"
@@ -77,7 +77,7 @@
       "requirement_id": "REQ-ORD-007",
       "title": "创建时间范围筛选（v2.0 新增）",
       "citation": "demo/specs/orders.md:51-58",
-      "score": 1.6977,
+      "score": 1.9031,
       "required": true,
       "matched_by": "requirement:REQ-ORD-007",
       "excerpt": "### REQ-ORD-007 创建时间范围筛选（v2.0 新增）\n\n- 支持可选参数 `created_after`、`created_before`，接受 ISO-8601 日期（`2026-09-05`）或带时区\n  日期时间（`2026-09-05T00:00:00Z`）；只给日期时按当天 00:00:00 UTC 解释。\n- 语义：`created_after <= created_at <= created_before`，两端都包含；只给一端时另一端不限制。\n- 无法解析返回 400，`code=INVALID_FILTER`，`field` 为对应参数名。\n- `created_after` 晚于 `created_before` 返回 400，`code=INVALID_FILTER`，`field=created_after`。\n- 实现要点：新增 `parse_created_bounds` 校验函数，与既有 `parse_pagination`/`parse_sort` 风格一致。"
@@ -86,7 +86,7 @@
       "requirement_id": "REQ-ORD-008",
       "title": "金额下限筛选（v2.0 新增）",
       "citation": "demo/specs/orders.md:60-65",
-      "score": 2.7667,
+      "score": 3.0235,
       "required": true,
       "matched_by": "requirement:REQ-ORD-008",
       "excerpt": "### REQ-ORD-008 金额下限筛选（v2.0 新增）\n\n- 支持可选参数 `min_amount`，十进制数，必须 `>= 0`。\n- 语义：`amount >= min_amount`（包含边界）。\n- 非数字或负数返回 400，`code=INVALID_FILTER`，`field=min_amount`。\n- 实现要点：新增 `parse_min_amount` 校验函数，使用 `Decimal` 比较，避免浮点误差。"
@@ -95,7 +95,7 @@
       "requirement_id": "REQ-ORD-009",
       "title": "筛选组合（v2.0 新增）",
       "citation": "demo/specs/orders.md:67-71",
-      "score": 2.7667,
+      "score": 3.0235,
       "required": true,
       "matched_by": "requirement:REQ-ORD-009",
       "excerpt": "### REQ-ORD-009 筛选组合（v2.0 新增）\n\n- 任意筛选参数可以组合，结果必须同时满足所有条件。\n- `total` 反映组合过滤后的数量，分页与排序在过滤之后应用。\n- 未提供任何筛选参数时，输出必须与 v1.0 完全一致。"
@@ -109,7 +109,7 @@
       "line_start": 43,
       "line_end": 57,
       "citation": "demo/app/service.py:43-57",
-      "score": 1.9445,
+      "score": 2.1881,
       "reason": "symbol~:INVALID_PAGINATION",
       "excerpt": "def parse_pagination(limit_raw: str | None, offset_raw: str | None) -> tuple[int, int]:\n    \"\"\"REQ-ORD-001: limit defaults to 20 and must stay in 1..100; offset >= 0.\"\"\"\n\n    limit = _parse_int(limit_raw, default=DEFAULT_LIMIT, field=\"limit\")\n    offset = _parse_int(offset_raw, default=0, field=\"offset\")\n    if limit < 1 or limit > MAX_LIMIT:\n        raise ApiError(\n            400,\n            \"INVALID_PAGINATION\",\n            f\"limit must be between 1 and {MAX_LIMIT}\",\n            field=\"limit\",\n        )\n    if offset < 0:\n        raise ApiError(400, \"INVALID_PAGINATION\", \"offset must be greater than or equal to 0\", field=\"offset\")\n    return limit, offset"
     },
@@ -119,7 +119,7 @@
       "line_start": 75,
       "line_end": 80,
       "citation": "demo/app/service.py:75-80",
-      "score": 2.454,
+      "score": 2.6974,
       "reason": "symbol~:created_at_asc",
       "excerpt": "def _sort_orders(orders: list[Order], sort: str) -> list[Order]:\n    if sort == \"created_at_asc\":\n        return sorted(orders, key=lambda order: order.created_at)\n    if sort == \"amount_desc\":\n        return sorted(orders, key=lambda order: order.amount, reverse=True)\n    return sorted(orders, key=lambda order: order.created_at, reverse=True)"
     },
@@ -129,7 +129,7 @@
       "line_start": 60,
       "line_end": 72,
       "citation": "demo/app/service.py:60-72",
-      "score": 2.3518,
+      "score": 2.5919,
       "reason": "symbol~:INVALID_SORT",
       "excerpt": "def parse_sort(sort_raw: str | None) -> str:\n    \"\"\"REQ-ORD-003: ``sort`` is one of the documented keys.\"\"\"\n\n    if sort_raw is None or sort_raw == \"\":\n        return SORT_KEYS[0]\n    if sort_raw not in SORT_KEYS:\n        raise ApiError(\n            400,\n            \"INVALID_SORT\",\n            f\"sort must be one of {', '.join(SORT_KEYS)}\",\n            field=\"sort\",\n        )\n    return sort_raw"
     },
@@ -139,7 +139,7 @@
       "line_start": 37,
       "line_end": 44,
       "citation": "demo/app/routes.py:37-44",
-      "score": 3.7812,
+      "score": 4.0657,
       "reason": "symbol~:order_id",
       "excerpt": "@router.get(\"/orders/{order_id}\")\ndef get_order_route(\n    request: Request,\n    order_id: str,\n    x_user_id: str | None = Header(default=None, alias=\"X-User-Id\"),\n) -> dict[str, str]:\n    user_id = require_user(x_user_id)\n    return get_order(request.app.state.repo, user_id, order_id)"
     },
@@ -149,7 +149,7 @@
       "line_start": 104,
       "line_end": 110,
       "citation": "demo/app/service.py:104-110",
-      "score": 2.1457,
+      "score": 2.3772,
       "reason": "symbol~:ORDER_NOT_FOUND",
       "excerpt": "def get_order(repo: OrderRepository, user_id: str, order_id: str) -> dict[str, str]:\n    \"\"\"REQ-ORD-004: unknown or foreign orders are a plain 404.\"\"\"\n\n    order = repo.get_for_user(user_id, order_id)\n    if order is None:\n        raise ApiError(404, \"ORDER_NOT_FOUND\", f\"order {order_id} was not found\", field=\"order_id\")\n    return order.to_dict()"
     },
@@ -159,7 +159,7 @@
       "line_start": 83,
       "line_end": 101,
       "citation": "demo/app/service.py:83-101",
-      "score": 2.171,
+      "score": 2.4038,
       "reason": "symbol:list_orders",
       "excerpt": "def list_orders(\n    repo: OrderRepository,\n    user_id: str,\n    *,\n    limit: int,\n    offset: int,\n    sort: str,\n) -> dict[str, object]:\n    \"\"\"Return one page of the caller's orders (REQ-ORD-001/002/003).\"\"\"\n\n    orders = _sort_orders(repo.list_for_user(user_id), sort)\n    total = len(orders)\n    page = orders[offset : offset + limit]\n    return {\n        \"items\": [order.to_dict() for order in page],\n        \"total\": total,\n        \"limit\": limit,\n        \"offset\": offset,\n    }"
     },
@@ -169,7 +169,7 @@
       "line_start": 13,
       "line_end": 22,
       "citation": "demo/app/main.py:13-22",
-      "score": 4.5391,
+      "score": 4.8574,
       "reason": "task+spec keywords",
       "excerpt": "def create_app(repository: OrderRepository | None = None) -> FastAPI:\n    app = FastAPI(title=\"orders-service\", version=\"1.0.0\")\n    app.state.repo = repository if repository is not None else OrderRepository()\n    app.include_router(router)\n\n    @app.exception_handler(ApiError)\n    async def _handle_api_error(_request: Request, exc: ApiError) -> JSONResponse:\n        return JSONResponse(status_code=exc.status_code, content=exc.to_payload())\n\n    return app"
     },
@@ -179,7 +179,7 @@
       "line_start": 6,
       "line_end": 27,
       "citation": "demo/app/errors.py:6-27",
-      "score": 3.1798,
+      "score": 3.7178,
       "reason": "task+spec keywords",
       "excerpt": "class ApiError(Exception):\n    \"\"\"Raised by the service layer; rendered by the FastAPI exception handler.\"\"\"\n\n    def __init__(\n        self,\n        status_code: int,\n        code: str,\n        message: str,\n        *,\n        field: str | None = None,\n    ) -> None:\n        super().__init__(message)\n        self.status_code = status_code\n        self.code = code\n        self.message = message\n        self.field = field\n\n    def to_payload(self) -> dict[str, object]:\n        error: dict[str, object] = {\"code\": self.code, \"message\": self.message}\n        if self.field is not None:\n            error[\"field\"] = self.field\n        return {\"error\": error}"
     },
@@ -189,7 +189,7 @@
       "line_start": 12,
       "line_end": 14,
       "citation": "demo/app/routes.py:12-14",
-      "score": 2.0228,
+      "score": 2.2624,
       "reason": "task+spec keywords",
       "excerpt": "@router.get(\"/health\")\ndef health() -> dict[str, str]:\n    return {\"status\": \"ok\"}"
     },
@@ -199,7 +199,7 @@
       "line_start": 15,
       "line_end": 37,
       "citation": "demo/app/models.py:15-37",
-      "score": 1.6724,
+      "score": 1.9173,
       "reason": "task+spec keywords",
       "excerpt": "@dataclass(frozen=True)\nclass Order:\n    \"\"\"A single order owned by exactly one user.\"\"\"\n\n    id: str\n    user_id: str\n    status: str\n    amount: Decimal\n    currency: str\n    created_at: datetime\n\n    def to_dict(self) -> dict[str, str]:\n        created = self.created_at.isoformat()\n        if created.endswith(\"+00:00\"):\n            created = created[: -len(\"+00:00\")] + \"Z\"\n        return {\n            \"id\": self.id,\n            \"user_id\": self.user_id,\n            \"status\": self.status,\n            \"amount\": format(self.amount, \".2f\"),\n            \"currency\": self.currency,\n            \"created_at\": created,\n        }"
     }
@@ -217,7 +217,7 @@
       "suite": "target",
       "path": "demo/tests/target/test_orders_filters_target.py",
       "citation": "demo/tests/target/test_orders_filters_target.py:13-19",
-      "score": 2.3276,
+      "score": 2.5668,
       "requirements": [
         "REQ-ORD-006"
       ],
@@ -229,7 +229,7 @@
       "suite": "target",
       "path": "demo/tests/target/test_orders_filters_target.py",
       "citation": "demo/tests/target/test_orders_filters_target.py:48-60",
-      "score": 2.2354,
+      "score": 2.471,
       "requirements": [
         "REQ-ORD-006"
       ],
@@ -241,7 +241,7 @@
       "suite": "target",
       "path": "demo/tests/target/test_orders_filters_target.py",
       "citation": "demo/tests/target/test_orders_filters_target.py:22-28",
-      "score": 2.5086,
+      "score": 2.7535,
       "requirements": [
         "REQ-ORD-007"
       ],
@@ -253,7 +253,7 @@
       "suite": "target",
       "path": "demo/tests/target/test_orders_filters_target.py",
       "citation": "demo/tests/target/test_orders_filters_target.py:63-75",
-      "score": 2.2135,
+      "score": 2.4482,
       "requirements": [
         "REQ-ORD-007"
       ],
@@ -265,7 +265,7 @@
       "suite": "target",
       "path": "demo/tests/target/test_orders_filters_target.py",
       "citation": "demo/tests/target/test_orders_filters_target.py:31-36",
-      "score": 2.9918,
+      "score": 3.253,
       "requirements": [
         "REQ-ORD-008"
       ],
@@ -277,7 +277,7 @@
       "suite": "target",
       "path": "demo/tests/target/test_orders_filters_target.py",
       "citation": "demo/tests/target/test_orders_filters_target.py:39-45",
-      "score": 2.7085,
+      "score": 2.9638,
       "requirements": [
         "REQ-ORD-009"
       ],

@@ -61,6 +61,7 @@ def run_pytest(
     python: str | None = None,
     extra_args: Sequence[str] = (),
     timeout_s: int = 900,
+    code_version: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run one pytest suite inside ``work_dir`` and write a JSON evidence log."""
 
@@ -112,6 +113,7 @@ def run_pytest(
         "exit_code": exit_code,
         "counts": counts,
         "junit": str(junit_path),
+        "code_version": code_version or {},
         "stdout": stdout,
         "stdout_sha256": _sha256_text(stdout),
         "stderr": stderr,
@@ -129,6 +131,7 @@ def run_suites(
     prefix: str,
     python: str | None = None,
     suites: Sequence[tuple[str, str]] = (("target", TARGET_SUITE), ("regression", REGRESSION_SUITE)),
+    code_version: dict[str, Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Run both suites and return ``{name: record}``."""
 
@@ -139,6 +142,7 @@ def run_suites(
             suite,
             log_path=log_dir / f"{prefix}-{name}.json",
             python=python,
+            code_version=code_version,
         )
     return results
 

@@ -1,6 +1,6 @@
 {
   "schema": "sddctx.sendb-evidence/v1",
-  "generated_at": "20261027T142414Z",
+  "generated_at": "20261027T144519Z",
   "connection": {
     "host": "127.0.0.1",
     "port": 2881,
@@ -19,7 +19,7 @@
       "rows": [
         [
           "ctx_doc",
-          "CREATE TABLE `ctx_doc` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `kind` varchar(16) NOT NULL,\n  `path` varchar(512) NOT NULL,\n  `line_start` int(11) NOT NULL,\n  `line_end` int(11) NOT NULL,\n  `title` varchar(255) NOT NULL DEFAULT '',\n  `body` mediumtext NOT NULL,\n  `symbol` varchar(255) NOT NULL DEFAULT '',\n  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `uk_doc` (`path`, `line_start`) BLOCK_SIZE 16384 LOCAL,\n  KEY `idx_kind` (`kind`) BLOCK_SIZE 16384 LOCAL,\n  FULLTEXT KEY `ft_body` (`body`) WITH PARSER ik PARSER_PROPERTIES=(ik_mode=\"smart\") BLOCK_SIZE 16384\n) ORGANIZATION INDEX AUTO_INCREMENT = 1140 DEFAULT CHARSET = utf8mb4 ROW_FORMAT = DYNAMIC COMPRESSION = 'zstd_1.3.8' BLOCK_SIZE = 16384 TABLET_SIZE = 134217728 PCTFREE = 0"
+          "CREATE TABLE `ctx_doc` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `kind` varchar(16) NOT NULL,\n  `path` varchar(512) NOT NULL,\n  `line_start` int(11) NOT NULL,\n  `line_end` int(11) NOT NULL,\n  `title` varchar(255) NOT NULL DEFAULT '',\n  `body` mediumtext NOT NULL,\n  `symbol` varchar(255) NOT NULL DEFAULT '',\n  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `uk_doc` (`path`, `line_start`) BLOCK_SIZE 16384 LOCAL,\n  KEY `idx_kind` (`kind`) BLOCK_SIZE 16384 LOCAL,\n  FULLTEXT KEY `ft_body` (`body`) WITH PARSER ik PARSER_PROPERTIES=(ik_mode=\"smart\") BLOCK_SIZE 16384\n) ORGANIZATION INDEX AUTO_INCREMENT = 1394 DEFAULT CHARSET = utf8mb4 ROW_FORMAT = DYNAMIC COMPRESSION = 'zstd_1.3.8' BLOCK_SIZE = 16384 TABLET_SIZE = 134217728 PCTFREE = 0"
         ]
       ],
       "row_count": 1
@@ -59,22 +59,22 @@
         [
           "spec",
           "demo/specs/orders.md:44-49",
-          8.628
+          9.402
         ],
         [
           "spec",
           "demo/specs/orders.md:67-71",
-          3.4972
+          3.7858
         ],
         [
           "spec",
           "demo/specs/orders.md:60-65",
-          2.1688
+          2.4012
         ],
         [
           "spec",
           "demo/specs/orders.md:51-58",
-          1.5167
+          1.7114
         ]
       ],
       "row_count": 4
@@ -91,27 +91,27 @@
         [
           "spec",
           "demo/specs/orders.md:60-65",
-          8.7094
+          9.5003
         ],
         [
           "spec",
           "demo/specs/orders.md:51-58",
-          6.9676
+          7.6943
         ],
         [
           "spec",
           "demo/specs/orders.md:44-49",
-          6.5939
+          7.1417
         ],
         [
           "spec",
           "demo/specs/orders.md:67-71",
-          3.4972
+          3.7858
         ],
         [
           "spec",
           "demo/specs/orders.md:15-23",
-          2.3392
+          2.5813
         ]
       ],
       "row_count": 5

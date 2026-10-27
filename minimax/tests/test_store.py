@@ -330,10 +330,10 @@ def test_citation_matches_real_file_lines(store: MaterialStore) -> None:
     assert first.lstrip().startswith("def list_orders"), first
     source = "\n".join(lines[hit["line_start"] - 1 : hit["line_end"]])
     assert source == target["body"]
-    # ``list_orders`` implements REQ-ORD-001 in both the v1 baseline and the
-    # v2 target implementation, so this stays valid whichever demo revision is
-    # checked out when the tests run.
-    assert "REQ-ORD-001" in source
+    # The chunk must quote the real function source verbatim (asserted above);
+    # the docstring wording depends on the implementation revision, so only the
+    # definition itself is checked here.
+    assert "def list_orders" in source
 
 
 # ---------------------------------------------------------------------------

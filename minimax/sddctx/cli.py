@@ -338,6 +338,32 @@ def cmd_state_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_state_export(args: argparse.Namespace) -> int:
+    """Export the persisted state from a *fresh process* (restart evidence)."""
+
+    import os
+
+    cfg = _cfg()
+    state = _state(cfg, args.scope_key)
+    payload = {
+        "schema": "sddctx.state-readback/v1",
+        "generated_at": _stamp(),
+        "db_path": _rel(cfg, cfg.pc_db_path),
+        "scope_key": args.scope_key or DEFAULT_SCOPE_KEY,
+        "process": {"pid": os.getpid(), "python": sys.executable},
+        "records": state.list(),
+        "prepared": state.prepare("补丁 测试 验证 状态"),
+    }
+    out = Path(args.out) if args.out else (cfg.records_dir / "powercontext" / f"state-readback-{_stamp()}.json")
+    if not out.is_absolute():
+        out = cfg.root / out
+    _save_json(out, payload)
+    print(f"state readback : {out}")
+    print(f"records        : {len(payload['records'])}")
+    print(f"prepared       : status={payload['prepared'].get('status')} bytes={payload['prepared'].get('bytes')}")
+    return 0
+
+
 def cmd_state_save(args: argparse.Namespace) -> int:
     cfg = _cfg()
     state = _state(cfg, args.scope_key)
@@ -452,14 +478,26 @@ def cmd_verify(args: argparse.Namespace) -> int:
         raise SystemExit(f"patch not found: {patch_path}")
     patch_text = patch_path.read_text(encoding="utf-8")
     _assert_patch_scope(patch_text)
+    patch_sha = verifymod._sha256_text(patch_text)
+    base_head = _git_head(cfg.root)
 
     before_root = cfg.evidence_dir / "tmp" / f"before-{_stamp()}"
     before_tree = verifymod.make_before_tree(cfg.demo_root, patch_text, work_root=before_root)
     if not before_tree["ok"]:
         raise SystemExit(f"could not build the pre-change tree: {before_tree['apply_stderr']}")
     try:
-        before = verifymod.run_suites(before_tree["before_dir"], log_dir=cfg.evidence_dir / "logs", prefix="before")
-        after = verifymod.run_suites(cfg.demo_root, log_dir=cfg.evidence_dir / "logs", prefix="after")
+        before = verifymod.run_suites(
+            before_tree["before_dir"],
+            log_dir=cfg.evidence_dir / "logs",
+            prefix="before",
+            code_version={"base_git_head": base_head, "patch_sha256": patch_sha, "tree_state": "before"},
+        )
+        after = verifymod.run_suites(
+            cfg.demo_root,
+            log_dir=cfg.evidence_dir / "logs",
+            prefix="after",
+            code_version={"base_git_head": base_head, "patch_sha256": patch_sha, "tree_state": "after"},
+        )
     finally:
         import shutil as _shutil
         _shutil.rmtree(before_root, ignore_errors=True)
@@ -649,6 +687,7 @@ def _live_generate_with_retry(cfg: ToolkitConfig, pack: dict[str, Any], args: ar
                 cfg.demo_root,
                 "tests/target",
                 log_path=cfg.evidence_dir / "logs" / f"live-attempt{attempt}-target.json",
+                code_version={"base_git_head": _git_head(cfg.root), "tree_state": "live-attempt"},
             )
             record["applied"] = True
             record["target_counts"] = target["counts"]
@@ -792,8 +831,18 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not before_tree["ok"]:
         raise SystemExit(f"could not build the pre-change tree: {before_tree['apply_stderr']}")
     try:
-        before = verifymod.run_suites(before_tree["before_dir"], log_dir=cfg.evidence_dir / "logs", prefix="before")
-        after = verifymod.run_suites(cfg.demo_root, log_dir=cfg.evidence_dir / "logs", prefix="after")
+        before = verifymod.run_suites(
+            before_tree["before_dir"],
+            log_dir=cfg.evidence_dir / "logs",
+            prefix="before",
+            code_version={"base_git_head": _git_head(cfg.root), "patch_sha256": patch_sha, "tree_state": "before"},
+        )
+        after = verifymod.run_suites(
+            cfg.demo_root,
+            log_dir=cfg.evidence_dir / "logs",
+            prefix="after",
+            code_version={"base_git_head": _git_head(cfg.root), "patch_sha256": patch_sha, "tree_state": "after"},
+        )
     finally:
         import shutil as _shutil
         _shutil.rmtree(before_root, ignore_errors=True)
@@ -923,6 +972,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_show.add_argument("--scope-key")
     p_show.add_argument("--json", action="store_true")
     p_show.set_defaults(func=cmd_state_show)
+    p_export = state_sub.add_parser("export", help="export the persisted state from a fresh process (restart evidence)")
+    p_export.add_argument("--out", help="output JSON path (default: records/powercontext/state-readback-<ts>.json)")
+    p_export.add_argument("--scope-key")
+    p_export.set_defaults(func=cmd_state_export)
     p_save = state_sub.add_parser("save", help="write task-state records")
     p_save.add_argument("--scope-key")
     p_save.add_argument("--entry", action="append", help="kind:text (repeatable)")

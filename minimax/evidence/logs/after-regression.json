@@ -3,8 +3,8 @@
   "suite": "tests/regression",
   "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/regression -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-regression.junit.xml",
   "cwd": "/mnt/d/oceanbase/work-eco/repo/minimax/demo",
-  "started_at": "2026-10-27T14:24:27Z",
-  "duration_s": 2.571,
+  "started_at": "2026-10-27T14:45:30Z",
+  "duration_s": 1.398,
   "timed_out": false,
   "exit_code": 0,
   "counts": {
@@ -14,7 +14,12 @@
     "skipped": 0
   },
   "junit": "/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-regression.junit.xml",
-  "stdout": "..................                                                       [100%]\n18 passed in 0.90s\n",
-  "stdout_sha256": "328e36d58227b94639dc4ebf6bbee698ed22a7190fe2bbec16afccd93cb347f7",
+  "code_version": {
+    "base_git_head": "d8155dfde47fd54bed7a3d499aa789adcc85ba5a",
+    "patch_sha256": "71de0a956ba7a67c1d9c923ff50e3081c3d4d04cbe7aa35c27ba28c63a0f1f78",
+    "tree_state": "after"
+  },
+  "stdout": "..................                                                       [100%]\n18 passed in 0.36s\n",
+  "stdout_sha256": "d015b2f31ef3fe7900d05082b66c5ec8069a2ebe988abc3a1192c3455c86b15d",
   "stderr": ""
 }
