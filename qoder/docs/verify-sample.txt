@@ -1,0 +1,66 @@
+目标应用: http://127.0.0.1:8080
+验证用户: verify-sample
+
+[PASS] 应用可访问  LLM=未配置（模板降级）
+[PASS] seekdb 可用  materials_384 / 384 维 / local:all-MiniLM-L6-v2
+[PASS] PowerContext 可用  v1.4.1
+[PASS] 样例资料入库  2 个文件 / 8 个片段
+[PASS] seekdb 中已有向量  当前 8 条
+[PASS] 问答返回引用  6 条引用，首条 os-notes · 虚拟内存与页面置换
+[PASS] seekdb 向量通道有命中  5 条
+[PASS] seekdb 全文通道有命中  3 条，关键词 ['页面', '置换', '算法', 'lru']
+[PASS] 检索定位到目标段落  chunk_id=64cedf08119c-0-2 score=0.07309
+[PASS] 薄弱点写入 PowerContext  art_b9964dabb5de4617ae2127f218aea9af@r1
+[PASS] 后续提问召回该记忆  matched_by=['text']
+[PASS] 计划引用记忆  weak_points=1 条
+[PASS] 计划内容包含该薄弱点  按记录顺序安排复习：
+[PASS] 检索日志可追溯  最近一条命中 6 个片段
+[PASS] 记忆写入计数  累计 1 次
+
+结果: 15/15 通过
+
+证据摘要（可直接贴进提交材料）:
+{
+  "user_key": "verify-sample",
+  "seekdb": {
+    "collection": "materials_384",
+    "dimension": 384,
+    "chunks": 8,
+    "keywords": [
+      "页面",
+      "置换",
+      "算法",
+      "lru"
+    ],
+    "vector_hits": 5,
+    "keyword_hits": 3,
+    "top_chunk": {
+      "id": "64cedf08119c-0-2",
+      "title": "os-notes",
+      "section": "虚拟内存与页面置换",
+      "score": 0.07309
+    },
+    "latency_ms": 642.3
+  },
+  "powercontext": {
+    "artifact": "art_b9964dabb5de4617ae2127f218aea9af@r1",
+    "recalled_by": [
+      "text"
+    ],
+    "plan_refs": [
+      "art_b9964dabb5de4617ae2127f218aea9af"
+    ]
+  },
+  "stats": {
+    "questions": 2,
+    "retrievals": 2,
+    "memories_written": 1,
+    "active_users": 1,
+    "documents": 2,
+    "chunks": 8,
+    "avg_retrieval_ms": 368.8,
+    "avg_answer_ms": 431.9,
+    "week_questions": 2,
+    "first_use": "2026-10-27T22:56:59+08:00"
+  }
+}

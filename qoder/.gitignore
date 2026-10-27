@@ -1,0 +1,9 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+data/seekdb/
+data/uploads/
+data/app.db
+data/powercontext/
+*.qoder.site

@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>知返 · 复习教练 — 记得你哪里没懂</title>
+<meta name="description" content="知返把「资料在哪」交给 seekdb，把「我学到哪」交给 PowerContext：带出处的问答、能被下次提问召回的薄弱点、基于记忆生成的复习计划。Qoder × OceanBase 学习效率赛道作品。" />
+<meta property="og:title" content="知返 · 复习教练" />
+<meta property="og:description" content="seekdb 管资料检索，PowerContext 管学习记忆。带出处问答 + 记忆闭环 + 复习计划。" />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f766e'/%3E%3Cpath d='M18 44V22l14 10 14-10v22' fill='none' stroke='%23faf7f2' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip" href="#main">跳到主要内容</a>
+
+<header class="topbar" id="top">
+  <div class="topbar-inner">
+    <a class="brand" href="#top" aria-label="知返首页">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="22" height="22"><path d="M7 24V9l9 6.5L25 9v15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="brand-name">知返</span>
+      <span class="brand-sub">复习教练</span>
+    </a>
+    <nav class="nav" aria-label="页面导航">
+      <a href="#idea">思路</a>
+      <a href="#split">技术分工</a>
+      <a href="#shots">界面</a>
+      <a href="#verify">验证样例</a>
+      <a href="#run">运行</a>
+      <a href="#qoder">Qoder 记录</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-grid" aria-hidden="true"></div>
+    <div class="wrap hero-inner">
+      <p class="eyebrow"><span class="dot"></span>Qoder × OceanBase · 学习效率赛道</p>
+      <h1 id="hero-title">一个记得你<br /><em>哪里没懂</em>的复习教练</h1>
+      <p class="lede">
+        知返把两件事分开解决：<strong>seekdb</strong> 负责「资料在哪」——切块、向量与全文双通道检索；
+        <strong>PowerContext</strong> 负责「我学到哪」——把你标记的薄弱点写成原子记忆，下一次提问、复习计划自动召回。
+      </p>
+      <div class="hero-actions">
+        <a class="btn primary" href="#verify">看实测验证结果</a>
+        <a class="btn ghost" href="#shots">看界面与记忆闭环</a>
+      </div>
+      <dl class="hero-stats">
+        <div><dt>15 / 15</dt><dd>端到端检查通过</dd></div>
+        <div><dt>384 维</dt><dd>HNSW · cosine</dd></div>
+        <div><dt>2 条通道</dt><dd>向量 + 全文 RRF 融合</dd></div>
+        <div><dt>0 个 Key</dt><dd>无模型凭据也能跑通</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section wrap" id="idea">
+    <header class="section-head">
+      <p class="kicker">为什么做它</p>
+      <h2>复习最难的不是「再看一遍」，是知道自己漏了什么</h2>
+      <p class="section-lede">大多数笔记工具只解决存储和搜索。知返多做一步：把「没懂」变成一个可追踪、可召回的对象，再让复习计划围着它转。</p>
+    </header>
+    <div class="cards three">
+      <article class="card">
+        <div class="icon-box" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M4 20.5V5.5M8 7h8M8 11h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </div>
+        <h3>资料散落，找不到原话</h3>
+        <p>笔记、讲义、PDF 各在一处。知返统一入库并按标题 / 页切块，回答必须带文档、章节与 chunk_id，资料里没有就直说没有。</p>
+      </article>
+      <article class="card">
+        <div class="icon-box" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 21s-7-4.4-7-10a4.4 4.4 0 0 1 7-3.5A4.4 4.4 0 0 1 19 11c0 5.6-7 10-7 10z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>学过就忘，下次从零开始</h3>
+        <p>「没懂页面置换」一旦写进记忆，下次提问会被自动召回，复习计划会把它排进去——不需要你重新描述一遍背景。</p>
+      </article>
+      <article class="card">
+        <div class="icon-box" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 19V5M4 19h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M7 14l3-3 3 2 4-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>计划拍脑袋，复习没重点</h3>
+        <p>计划只从记忆里的薄弱点与进度生成，不随机抽题；每个安排都附上引用的 <code>artifact_id@revision</code>，可逐条核对。</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section section-tint" id="split">
+    <div class="wrap">
+      <header class="section-head">
+        <p class="kicker">技术分工</p>
+        <h2>两种技术各管一件事，都在主流程里</h2>
+        <p class="section-lede">不是安装完就闲置的组件：每一条回答、每一次「标记没懂」都会实际读写这两套存储，并且可以在接口与页面上对照。</p>
+      </header>
+
+      <div class="split">
+        <article class="split-card seek">
+          <div class="split-head">
+            <span class="tag">seekdb</span>
+            <h3>资料在哪</h3>
+          </div>
+          <ul class="checks">
+            <li>笔记切块写入 collection <code>materials_384</code>，384 维向量，HNSW / cosine。</li>
+            <li>每次提问同时走<strong>向量通道</strong>与<strong>全文通道</strong>（<code>$contains</code>），客户端 RRF 融合。</li>
+            <li>返回片段带文档、章节、页码、<code>chunk_id</code> 与分数，直接成为回答引用。</li>
+          </ul>
+          <div class="probe">
+            <span class="probe-label">可核对</span>
+            <code>GET /api/health → seekdb</code>
+            <code>GET /api/evidence → hit_ids / score / latency</code>
+          </div>
+        </article>
+
+        <article class="split-card pc">
+          <div class="split-head">
+            <span class="tag">PowerContext</span>
+            <h3>我学到哪</h3>
+          </div>
+          <ul class="checks">
+            <li>每个用户一个 Scope（<code>study-coach:&lt;user_key&gt;</code>），薄弱点是独立原子记忆。</li>
+            <li>写入返回 <code>artifact_id@revision</code>；下一次提问由 <code>/v1/memory/search</code> 召回并注入回答。</li>
+            <li>复习计划读取同一批 artifact，页面上逐条展示引用来源。</li>
+          </ul>
+          <div class="probe">
+            <span class="probe-label">可核对</span>
+            <code>GET /api/memories → artifact_id / revision</code>
+            <code>GET /api/plan → weak_points[].artifact_id</code>
+          </div>
+        </article>
+      </div>
+
+      <div class="flow" role="img" aria-label="流程：提问同时经过 seekdb 检索与 PowerContext 记忆召回，融合后生成带出处与记忆引用的回答">
+        <div class="flow-node start">
+          <span class="flow-k">提问</span>
+          <span class="flow-s">「LRU 和 Clock 有什么区别？」</span>
+        </div>
+        <div class="flow-branch">
+          <div class="flow-node seek">
+            <span class="flow-k">seekdb</span>
+            <span class="flow-s">向量 Top-K + 全文命中<br />RRF 融合、覆盖率加权</span>
+            <span class="flow-o">片段 + 出处</span>
+          </div>
+          <div class="flow-node pc">
+            <span class="flow-k">PowerContext</span>
+            <span class="flow-s">按 Scope 召回<br />weak-point 记忆</span>
+            <span class="flow-o">artifact@revision</span>
+          </div>
+        </div>
+        <div class="flow-node end">
+          <span class="flow-k">回答 / 计划</span>
+          <span class="flow-s">引用出处 · 标注记忆 · 计划可追溯</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section wrap" id="shots">
+    <header class="section-head">
+      <p class="kicker">实际界面</p>
+      <h2>从提问到「计划记得你」，四步闭环</h2>
+      <p class="section-lede">以下截图来自本机实测运行（Windows 原生 + Docker seekdb），不是设计稿。</p>
+    </header>
+
+    <div class="gallery">
+      <figure class="shot wide">
+        <button class="shot-btn" data-full="assets/answer.png" aria-label="放大查看带出处的回答">
+          <img src="assets/answer.png" alt="问答页：回答下方列出 6 条引用，包含文档名、章节、页码、chunk_id 与 RRF 分数，并显示本次检索的关键词与耗时" loading="lazy" />
+        </button>
+        <figcaption><strong>带出处的回答</strong><span>每条引用都可回溯到 chunk；页面同时显示关键词、双通道命中与耗时。</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button class="shot-btn" data-full="assets/memory.png" aria-label="放大查看复习计划召回记忆">
+          <img src="assets/memory.png" alt="复习计划页：计划内容引用了此前标记的薄弱点，并列出 art_b9964dabb5de4617ae2127f218aea9af@r1" loading="lazy" />
+        </button>
+        <figcaption><strong>计划召回记忆</strong><span>计划里的薄弱点来自 PowerContext，引用同一 <code>artifact_id</code>。</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button class="shot-btn" data-full="assets/evidence.png" aria-label="放大查看证据面板">
+          <img src="assets/evidence.png" alt="证据面板：累计提问、检索次数、写入记忆、平均耗时、最近检索明细与事件记录" loading="lazy" />
+        </button>
+        <figcaption><strong>证据面板</strong><span>提问 / 检索 / 记忆写入计数、平均耗时、最近检索明细与 CSV 导出。</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button class="shot-btn" data-full="assets/home.png" aria-label="放大查看首页">
+          <img src="assets/home.png" alt="知返首页：资料、问答、复习计划、记忆档案与证据入口" loading="lazy" />
+        </button>
+        <figcaption><strong>单页工作台</strong><span>无构建步骤的前端，资料、问答、计划、证据在同一处。</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section section-dark" id="verify">
+    <div class="wrap">
+      <header class="section-head">
+        <p class="kicker">可复现验证</p>
+        <h2>一条命令，15 项检查，两类存储都被实际读写</h2>
+        <p class="section-lede"><code>scripts/verify.py</code> 自动完成：导入样例 → 提问 → 校验双通道与出处 → 标记没懂 → 再次提问校验记忆召回 → 生成计划 → 读取证据统计。</p>
+      </header>
+
+      <div class="verify-layout">
+        <div class="term" aria-label="验证脚本实测输出">
+          <div class="term-bar"><span></span><span></span><span></span><em>verify.py · 实测输出</em></div>
+          <pre><code><span class="ok">[PASS]</span> 应用可访问  LLM=未配置（模板降级）
+<span class="ok">[PASS]</span> seekdb 可用  materials_384 / 384 维 / local:all-MiniLM-L6-v2
+<span class="ok">[PASS]</span> PowerContext 可用  v1.4.1
+<span class="ok">[PASS]</span> 样例资料入库  2 个文件 / 8 个片段
+<span class="ok">[PASS]</span> seekdb 中已有向量  当前 8 条
+<span class="ok">[PASS]</span> 问答返回引用  6 条，首条 os-notes · 虚拟内存与页面置换
+<span class="ok">[PASS]</span> seekdb 向量通道有命中  5 条
+<span class="ok">[PASS]</span> seekdb 全文通道有命中  3 条，关键词 ['页面', '置换', '算法', 'lru']
+<span class="ok">[PASS]</span> 检索定位到目标段落  chunk_id=64cedf08119c-0-2 score=0.07309
+<span class="ok">[PASS]</span> 薄弱点写入 PowerContext  art_b9964dabb5de4617ae2127f218aea9af@r1
+<span class="ok">[PASS]</span> 后续提问召回该记忆  matched_by=['text']
+<span class="ok">[PASS]</span> 计划引用记忆  weak_points=1 条
+<span class="ok">[PASS]</span> 计划内容包含该薄弱点
+<span class="ok">[PASS]</span> 检索日志可追溯  最近一条命中 6 个片段
+<span class="ok">[PASS]</span> 记忆写入计数  累计 1 次
+
+结果: <b>15/15 通过</b></code></pre>
+        </div>
+
+        <div class="verify-side">
+          <div class="fact">
+            <span class="fact-k">输入问题</span>
+            <p>页面置换算法里 LRU 和 Clock 有什么区别？</p>
+          </div>
+          <div class="fact">
+            <span class="fact-k">seekdb 观察值</span>
+            <p><code>materials_384</code> · 384 维 · 8 片段 · 向量命中 5 / 全文命中 3 · top <code>64cedf08119c-0-2</code> · score <code>0.07309</code> · 冷启动 <code>642.3 ms</code></p>
+          </div>
+          <div class="fact">
+            <span class="fact-k">PowerContext 观察值</span>
+            <p><code>art_b9964dabb5de4617ae2127f218aea9af@r1</code>，再次提问 <code>matched_by=["text"]</code>，计划引用同一 artifact_id；应用重启后仍可召回。</p>
+          </div>
+          <div class="fact">
+            <span class="fact-k">统计</span>
+            <p>提问 2 · 检索 2 · 记忆写入 1 · 文档 2 · 片段 8 · 平均检索 368.8 ms</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <caption>证据位置</caption>
+          <thead><tr><th scope="col">证据</th><th scope="col">在哪里看到</th></tr></thead>
+          <tbody>
+            <tr><td>seekdb 集合、维度、片段数</td><td><code>GET /api/health</code> → <code>seekdb</code></td></tr>
+            <tr><td>关键词 / 双通道命中 / chunk_id / 分数 / 耗时</td><td><code>GET /api/evidence</code>、<code>GET /api/export/events.csv</code></td></tr>
+            <tr><td>记忆写入与召回</td><td><code>GET /api/memories</code>、回答中的 <code>memories[].artifact_id</code> 与 <code>matched_by</code></td></tr>
+            <tr><td>计划对记忆的引用</td><td><code>GET /api/plan</code> → <code>weak_points[].artifact_id</code></td></tr>
+            <tr><td>PowerContext 可选上下文</td><td><code>GET /api/powercontext/prepare</code>（未配置模型时如实返回 <code>empty</code>）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section wrap" id="run">
+    <header class="section-head">
+      <p class="kicker">安装与运行</p>
+      <h2>两条路径都已实测</h2>
+      <p class="section-lede">Windows 用 Docker 跑 seekdb 远程模式；WSL / Linux 用 seekdb 嵌入式模式，不需要 Docker。首次运行会下载约 86 MB 的本地嵌入模型。</p>
+    </header>
+
+    <div class="prereq">
+      <span>Python 3.12</span>
+      <span>PowerContext 1.4.1</span>
+      <span>pyseekdb 1.4.0.post1</span>
+      <span>seekdb Docker 镜像</span>
+      <span>FastAPI 0.162</span>
+    </div>
+
+    <div class="tabs" data-tabs>
+      <div class="tablist" role="tablist" aria-label="运行方式">
+        <button role="tab" id="tab-a" aria-controls="panel-a" aria-selected="true" class="active">A · Windows 原生 + Docker</button>
+        <button role="tab" id="tab-b" aria-controls="panel-b" aria-selected="false">B · WSL / Linux + 嵌入式</button>
+      </div>
+
+      <div role="tabpanel" id="panel-a" aria-labelledby="tab-a" class="tabpanel active">
+        <ol class="steps">
+          <li>
+            <h3>准备工具</h3>
+            <div class="code"><button class="copy" type="button" aria-label="复制命令">复制</button><pre><code>python -m pip install --user uv
+uv tool install "powercontext[cli,server]==1.4.1"
+cd qoder
+uv sync --python 3.12
+cp .env.example .env</code></pre></div>
+          </li>
+          <li>
+            <h3>启动 seekdb 并建库</h3>
+            <div class="code"><button class="copy" type="button" aria-label="复制命令">复制</button><pre><code>docker run -d --name seekdb -p 2881:2881 -p 2886:2886 oceanbase/seekdb:latest
+docker exec seekdb mysql -h127.0.0.1 -P2881 -uroot \
+  -e "CREATE DATABASE IF NOT EXISTS study_coach;"</code></pre></div>
+            <p class="note">拉取 Docker Hub 失败时可用镜像：<code>docker.m.daocloud.io/oceanbase/seekdb:latest</code>，再 <code>docker tag</code> 成本地 <code>oceanbase/seekdb:latest</code>。</p>
+          </li>
+          <li>
+            <h3>改 .env 并启动</h3>
+            <div class="code"><button class="copy" type="button" aria-label="复制命令">复制</button><pre><code># SEEKDB_MODE=remote
+# SEEKDB_HOST=127.0.0.1   SEEKDB_PORT=2881
+# SEEKDB_USER=root        SEEKDB_DATABASE=study_coach
+# HF_ENDPOINT=https://hf-mirror.com
+
+powershell -ExecutionPolicy Bypass -File scripts\start.ps1</code></pre></div>
+            <p class="note">应用 <code>http://127.0.0.1:8080</code>；PowerContext <code>http://127.0.0.1:8000</code>（Dashboard <code>/dashboard/</code>）。</p>
+          </li>
+        </ol>
+      </div>
+
+      <div role="tabpanel" id="panel-b" aria-labelledby="tab-b" class="tabpanel">
+        <ol class="steps">
+          <li>
+            <h3>准备工具</h3>
+            <div class="code"><button class="copy" type="button" aria-label="复制命令">复制</button><pre><code>uv tool install "powercontext[cli,server]==1.4.1"
+cd qoder
+uv sync --python 3.12
+cp .env.example .env</code></pre></div>
+          </li>
+          <li>
+            <h3>保持嵌入式配置并启动</h3>
+            <div class="code"><button class="copy" type="button" aria-label="复制命令">复制</button><pre><code># .env 默认：SEEKDB_MODE=embedded
+# SEEKDB_PATH=./data/seekdb
+bash scripts/start.sh</code></pre></div>
+            <p class="note">无需 Docker；嵌入式 seekdb 不支持 Windows，Windows 请用方式 A。</p>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="run-verify">
+      <h3>跑一遍验证</h3>
+      <div class="code"><button class="copy" type="button" aria-label="复制命令">复制</button><pre><code># 服务启动后，另开终端
+python scripts/verify.py --base http://127.0.0.1:8080
+# Windows：.venv\Scripts\python.exe scripts\verify.py --base http://127.0.0.1:8080</code></pre></div>
+      <p class="note">没有模型 Key 也能得到 15/15：回答降级为「按检索结果整理的依据」，检索与记忆闭环不受影响。配置 OpenAI 兼容接口后，回答与计划由模型生成。</p>
+    </div>
+  </section>
+
+  <section class="section section-tint" id="qoder">
+    <div class="wrap">
+      <header class="section-head">
+        <p class="kicker">Qoder 开发记录</p>
+        <h2>项目在 Qoder 中开发与验证</h2>
+        <p class="section-lede">环境可行性验证（PowerContext base-memory、pyseekdb 嵌入式与远程）→ 检索质量调优（jieba 关键词、通道权重、覆盖率与标题加权）→ 记忆闭环（行内「标记没懂」）→ 证据面板，全部在 Qoder 对话内完成并运行。</p>
+      </header>
+      <div class="qoder-grid">
+        <figure class="shot">
+          <button class="shot-btn" data-full="assets/qoder.png" aria-label="放大查看 Qoder 开发截图">
+            <img src="assets/qoder.png" alt="Qoder 桌面端：左侧为开发对话，右侧为应用实时预览" loading="lazy" />
+          </button>
+          <figcaption><strong>对话 + 实时预览</strong><span>Qoder 内置预览中运行的应用与对话同屏。</span></figcaption>
+        </figure>
+        <div class="qoder-meta">
+          <div class="fact">
+            <span class="fact-k">Qoder 账号 UID</span>
+            <p><code>01a17da6-0399-7bce-bcf0-fd513477e0a4</code></p>
+          </div>
+          <div class="fact">
+            <span class="fact-k">开发方式</span>
+            <p>需求拆解、环境排障、检索调权、记忆闭环与验证脚本均通过 Qoder Agent 对话推进；应用由内置预览与浏览器实测。</p>
+          </div>
+          <div class="fact">
+            <span class="fact-k">代码位置</span>
+            <p>PowerContext <code>2026-competition-ecosystem</code> 分支的 <code>qoder/</code> 目录。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section wrap" id="limits">
+    <header class="section-head">
+      <p class="kicker">边界与安全</p>
+      <h2>如实说明能力边界</h2>
+    </header>
+    <div class="cards three">
+      <article class="card slim">
+        <h3>本机演示，不上传云端</h3>
+        <p>笔记、记忆与日志只存本机（seekdb / PowerContext SQLite / <code>data/app.db</code>）。网站只展示项目，不在服务器上运行后端。</p>
+      </article>
+      <article class="card slim">
+        <h3>没有 Key 时的降级</h3>
+        <p>未配置模型时回答为模板整理，计划为规则生成；<code>/v1/context/prepare</code> 如实返回 <code>empty</code>，不伪造语义能力。</p>
+      </article>
+      <article class="card slim">
+        <h3>本地向量模型的中文短板</h3>
+        <p><code>all-MiniLM-L6-v2</code> 中文语义排序偏弱，用全文通道与关键词覆盖加权补偿；配置 API 向量可进一步提升。</p>
+      </article>
+    </div>
+    <p class="security-note">
+      仓库只保留 <code>.env.example</code> 占位值；<code>.env</code>、虚拟环境与本地数据目录均在 <code>.gitignore</code> 中。PowerContext 默认仅绑定 <code>127.0.0.1</code>、访问控制为 <code>disabled</code>，暴露公网前必须开启鉴权并更换示例凭据。
+    </p>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="20" height="20"><path d="M7 24V9l9 6.5L25 9v15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <div>
+        <strong>知返 · 复习教练</strong>
+        <p>seekdb 记住资料，PowerContext 记住你。</p>
+      </div>
+    </div>
+    <p class="footer-meta">基于 PowerContext <code>2026-competition-ecosystem</code> 分支开发 · 使用 Qoder Sites 发布</p>
+  </div>
+</footer>
+
+<div class="lightbox" id="lightbox" hidden>
+  <button class="lightbox-close" aria-label="关闭大图">×</button>
+  <img alt="" />
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

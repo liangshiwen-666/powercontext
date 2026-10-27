@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>知返 · 复习教练</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">知返</span>
+      <div>
+        <h1>复习教练</h1>
+        <p>资料由 seekdb 混合检索，你的薄弱点由 PowerContext 记住</p>
+      </div>
+    </div>
+    <div class="who">
+      <label for="userKey">使用者</label>
+      <input id="userKey" placeholder="输入昵称" />
+      <div class="status" id="status">
+        <span class="dot" id="dotSeek"></span>seekdb
+        <span class="dot" id="dotMemory"></span>记忆
+        <span class="dot" id="dotLlm"></span>模型
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-panel="ask">问答</button>
+    <button class="tab" data-panel="docs">资料</button>
+    <button class="tab" data-panel="plan">复习计划</button>
+    <button class="tab" data-panel="evidence">证据</button>
+  </nav>
+
+  <main>
+    <section class="panel active" id="panel-ask">
+      <div class="ask-box">
+        <textarea id="question" rows="3" placeholder="例如：死锁的等待图和资源分配图有什么区别？"></textarea>
+        <div class="ask-actions">
+          <span class="hint">回答会标注资料出处；不确定会直说</span>
+          <button id="askBtn" class="primary">提问</button>
+        </div>
+      </div>
+      <div id="answerArea" class="stack"></div>
+    </section>
+
+    <section class="panel" id="panel-docs">
+      <div class="card">
+        <h2>导入资料</h2>
+        <p class="muted">支持 .md / .txt / .pdf。切块后写入 seekdb，片段保留标题、章节与页码。</p>
+        <div class="row">
+          <input type="file" id="fileInput" accept=".md,.markdown,.txt,.pdf" />
+          <button id="uploadBtn" class="primary">上传并入库</button>
+          <button id="seedBtn">灌入样例资料</button>
+        </div>
+        <pre id="ingestResult" class="output hidden"></pre>
+      </div>
+      <div class="card">
+        <h2>已入库资料</h2>
+        <div id="docList" class="list"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-plan">
+      <div class="card">
+        <div class="row space">
+          <h2>今日复习计划</h2>
+          <button id="planBtn" class="primary">生成计划</button>
+        </div>
+        <p class="muted">计划来自 PowerContext 里保存的薄弱点与进度，不是随机抽题。</p>
+        <div id="planOut" class="stack"></div>
+      </div>
+      <div class="card">
+        <h2>记忆档案</h2>
+        <div id="memoryList" class="list"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-evidence">
+      <div class="card">
+        <div class="row space">
+          <h2>检索与使用记录</h2>
+          <a class="link" href="/api/export/events.csv">导出事件 CSV</a>
+        </div>
+        <div id="statCards" class="stats"></div>
+      </div>
+      <div class="card">
+        <h2>最近检索</h2>
+        <p class="muted">每条记录包含关键词、命中的片段 ID 与耗时，可直接核对 seekdb 的作用。</p>
+        <div id="retrievalList" class="list"></div>
+      </div>
+      <div class="card">
+        <h2>跨会话上下文（可选）</h2>
+        <p class="muted">配置 Generation / Embedding 后 PowerContext 的 /v1/context/prepare 才会返回内容；未配置时返回 empty 属正常。</p>
+        <button id="prepareBtn">查询 context/prepare</button>
+        <pre id="prepareOut" class="output hidden"></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>seekdb 负责“资料在哪”，PowerContext 负责“我学到哪”</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
