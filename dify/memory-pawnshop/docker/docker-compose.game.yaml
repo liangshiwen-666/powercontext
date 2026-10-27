@@ -1,0 +1,45 @@
+# ==================================================================
+# 记忆当铺 —— 叠加在 Dify 官方 docker-compose.yaml 之上的编排文件
+# 用法（在 Dify 的 docker/ 目录下）：
+#   COMPOSE_PROFILES=postgresql docker compose \
+#     -f docker-compose.yaml -f docker-compose.game.yaml up -d --build
+# ==================================================================
+services:
+  # 记忆与档案服务：PowerContext 1.4.1 + 嵌入式 seekdb 存储/检索引擎
+  powercontext:
+    build:
+      context: ./pc
+    image: memory-pawnshop/powercontext:1.4.1
+    container_name: powercontext
+    restart: always
+    environment:
+      POWERCONTEXT_HOME: /data
+      POWERCONTEXT_SERVER_HTTP_HOST: 0.0.0.0
+      POWERCONTEXT_SERVER_HTTP_PORT: "8000"
+      POWERCONTEXT_SERVER_ALLOW_UNAUTHENTICATED_NON_LOOPBACK: "true"
+      POWERCONTEXT_SERVER_DASHBOARD_ENABLED: "true"
+      # seekdb 作为 PowerContext 的存储与检索引擎（全文 + 向量索引）
+      POWERCONTEXT_SERVER_DATABASE_KIND: "seekdb"
+      POWERCONTEXT_SERVER_DATABASE_PATH: "/data/seekdb"
+      # embedding: 硅基流动 BAAI/bge-m3（1024 维，固定维度）
+      POWERCONTEXT_SERVER_INFERENCE_EMBEDDING_MODEL: "openai:BAAI/bge-m3"
+      POWERCONTEXT_SERVER_INFERENCE_EMBEDDING_PROFILE_ID: "bge-m3-1024-v1"
+      POWERCONTEXT_SERVER_INFERENCE_EMBEDDING_DIMENSION: "1024"
+      POWERCONTEXT_SERVER_INFERENCE_EMBEDDING_BASE_URL: "https://api.siliconflow.cn/v1"
+      POWERCONTEXT_SERVER_INFERENCE_EMBEDDING_SEND_DIMENSIONS: "false"
+      POWERCONTEXT_SERVER_RUNTIME_RECALL_EMBEDDING_TIMEOUT_SECONDS: "3"
+      SILICONFLOW_API_KEY: ${GAME_SILICONFLOW_API_KEY:-}
+    volumes:
+      - ./volumes/powercontext:/data
+    ports:
+      # 仅本机可访问（Dashboard / 自检脚本用）
+      - "127.0.0.1:17429:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health/live',timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    networks:
+      - default
+      - ssrf_proxy_network

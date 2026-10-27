@@ -1,0 +1,52 @@
+{
+  "meta": {
+    "purpose": "PowerContext 初始化数据：三个 NPC 记忆 scope 的 cover-story 记忆 + 当铺档案 scope 的说明。档案正文由 data/archives.md 解析后写入。",
+    "scope_rule": "scope 用 idempotency_key 保证可重复初始化；Dify 里用 GET /v1/scopes 按 title 解析出 scope_id。"
+  },
+  "scopes": [
+    {
+      "id": "archive",
+      "title": "当铺档案柜·雾河卷",
+      "summary": "雾河镇档案（镇志/账本/讣告/传闻），只读参考，供玩家翻档案核对事实。",
+      "idempotency_key": "memory-pawnshop-scope-archive-v1",
+      "memories": []
+    },
+    {
+      "id": "ayuan",
+      "title": "当铺客人·阿沅",
+      "summary": "阿沅（案号 C01）对母亲去世那件事的记忆。她把「我到了却没进去」改写成「我没回来」，说了二十三年。",
+      "idempotency_key": "memory-pawnshop-scope-npc-ayuan-v1",
+      "case_id": "C01",
+      "memories": [
+        {"kind": "planted", "text": "那年我在城南袜厂加班，厂里不放人，我到底没能赶回去见娘最后一面。"},
+        {"kind": "planted", "text": "娘临走前说的是「别回来」，她恨我没回来，所以我不敢进那条巷子。"},
+        {"kind": "doubt", "text": "我好像梦见过卫生院三楼的灯，亮着，可我记不清那是不是我自己去过。"}
+      ]
+    },
+    {
+      "id": "laozhou",
+      "title": "当铺客人·老周",
+      "summary": "老周（案号 C02）对女儿落水那天的记忆。他认定自己迟到二十分钟害死了女儿，用十年给自己造了一个能扛的罪名。",
+      "idempotency_key": "memory-pawnshop-scope-npc-laozhou-v1",
+      "case_id": "C02",
+      "memories": [
+        {"kind": "planted", "text": "十七号下午我收工晚到渡口二十分钟，船准时开了，我没赶上。"},
+        {"kind": "planted", "text": "是我算错了时间，我晚了二十分钟，这二十分钟是我欠小满的。"},
+        {"kind": "doubt", "text": "那天的雾大得看不见水，我记得到码头的时候，一个人也没有。"}
+      ]
+    },
+    {
+      "id": "baitang",
+      "title": "当铺客人·白棠",
+      "summary": "白棠（案号 C03）对丈夫之死的记忆。她每月十五来当同一段雾，当簿记着二百三十九张同款当票。",
+      "idempotency_key": "memory-pawnshop-scope-npc-baitang-v1",
+      "case_id": "C03",
+      "memories": [
+        {"kind": "planted", "text": "我是第一次来这间当铺，今晚头一回，把那年二月十四的雾当掉。"},
+        {"kind": "planted", "text": "见山每回跑船回来，都先到照相馆门口站一会儿，等我把灯调好。"},
+        {"kind": "doubt", "text": "柜台后头那盏灯我好像在夜里见过很多次，二十年都没换过。"},
+        {"kind": "doubt", "text": "这条街的雾我熟得闭着眼都能走，可我总觉得自己在别处等过一个人。"}
+      ]
+    }
+  ]
+}
