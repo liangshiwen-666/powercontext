@@ -70,8 +70,8 @@
 ## 4. 初始数据
 
 - 业务工程数据：内存种子数据 12 条订单（`u-alice` 7 条、`u-bob` 5 条），时间集中在 2026-09。
-- 修改前代码：`patches/0001-orders-filters.patch` 的**反向**即为修改前快照；`evidence/` 中保留
-  before 测试日志与上下文包。
+- 修改前后代码快照：`evidence/snapshots/before/app/` 与 `evidence/snapshots/after/app/`（含 sha256 与生成方式）；
+  代码差异为 `patches/0001-orders-filters.patch`；`evidence/` 中另有 before/after 测试日志与上下文包。
 - seekdb：空库开始，由 `python -m sddctx ingest` 全量导入（幂等，可反复执行）。
 - PowerContext：空状态开始（`.data/powercontext/pc.db` 不存在），第一次运行时创建。
 

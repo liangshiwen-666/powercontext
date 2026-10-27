@@ -25,7 +25,7 @@
 | `records/minimax/` | MiniMax 开发记录（请求/响应原文、参数、usage、trace id、哈希链） |
 | `records/db/` | seekdb 初始化与检索 SQL 记录（真实执行输出） |
 | `records/powercontext/` | 任务状态写入/读回记录 |
-| `evidence/` | 上下文包、before/after 测试日志（命令、退出码、计数）、验证结论 |
+| `evidence/` | 上下文包、before/after 代码快照（`snapshots/`）、测试日志（命令、退出码、计数）、验证结论 |
 | `scripts/` | 一键脚本：`setup.sh` / `demo.sh` / `spec-update.sh` / `check-env.sh` / `reset.sh` |
 | `docs/` | [运行说明](docs/runbook.md) · [验证样例](docs/sample.md) · [一页技术说明](docs/tech-note.md) |
 
@@ -64,7 +64,7 @@ python -m sddctx run --live        # 生成 → 应用 → 测试 → 记录，�
 | 上下文正确 | `evidence/context/*.json`：每条含真实 `path:line` 引用；`scripts/spec-update.sh` 演示规格更新重导入后上下文变化 |
 | 数据库实际参与 | `records/db/*.json`：建表 DDL、入库行数、检索 SQL 与命中结果；`store.search` 的命中直接构成上下文的 citations |
 | 状态能够复用 | `evidence/run.json` 中 PowerContext outcome；`scripts/demo.sh` 最后用**新进程** `state show` 读回 |
-| 代码修改有效 | `evidence/verification.json`：同一组测试 before（target 6 failed / regression 18 passed）与 after（6 passed / 18 passed）的完整日志 |
+| 代码修改有效 | `evidence/verification.json`：同一组测试 before（target 6 failed / regression 18 passed）与 after（6 passed / 18 passed）的完整日志；`evidence/snapshots/` 为修改前后代码快照 |
 
 ## 技术栈（实际采用的方式与版本）
 
