@@ -1,0 +1,90 @@
+{
+  "when": "2026-10-28T06:00:49.265Z",
+  "url": "http://127.0.0.1:8787/",
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0",
+  "gpu": "no adapter",
+  "badge": {
+    "badge": "WASM · q8",
+    "all": [
+      "WASM · q8",
+      "模型 bge-small-zh-v1.5",
+      "seekdb server 127.0.0.1:2881"
+    ]
+  },
+  "health": {
+    "mode": "server",
+    "database": "stepfun",
+    "host": "127.0.0.1:2881",
+    "dim": 512,
+    "physicalCollection": "kb_docs"
+  },
+  "ingest": {
+    "rows": [
+      "写入 + 索引刷新 40 chunks 462 ms",
+      "文档向量化 40 chunks · 15.1 chunks/s 2642 ms",
+      "模型加载（首次） wasm/q8 527 ms"
+    ],
+    "counts": [
+      "40"
+    ],
+    "hint": "文本在浏览器内向量化，只把向量与原文写入 seekdb"
+  },
+  "query": {
+    "meta": "seekdb hybridSearch（向量 + 全文，库内 RRF 融合）\n19.9 ms\n10 条",
+    "top3": [
+      "文档 ID 与重复导入 :: score 0.033",
+      "索引刷新与最终一致性 :: score 0.032",
+      "增量导入与状态管理 :: score 0.031"
+    ],
+    "count": 10
+  },
+  "bench": {
+    "text": "基准 ×10（hybrid，wasm/q8）：P50 21.4 ms · P95 29.4 ms min 19.1 / max 29.4"
+  },
+  "secondLoad": {
+    "load": "模型加载（首次） wasm/q8 548 ms",
+    "badge": "WASM · q8"
+  },
+  "timings": [
+    {
+      "label": "基准 ×10（P95）",
+      "detail": "端到端",
+      "value": "29 ms"
+    },
+    {
+      "label": "基准 ×10（P50）",
+      "detail": "wasm/q8",
+      "value": "21 ms"
+    },
+    {
+      "label": "端到端（提交→结果可展示）",
+      "detail": "",
+      "value": "46 ms"
+    },
+    {
+      "label": "seekdb 检索（hybrid）",
+      "detail": "topK=10",
+      "value": "20 ms"
+    },
+    {
+      "label": "查询向量化",
+      "detail": "1 query",
+      "value": "22 ms"
+    },
+    {
+      "label": "写入 + 索引刷新",
+      "detail": "40 chunks",
+      "value": "462 ms"
+    },
+    {
+      "label": "文档向量化",
+      "detail": "40 chunks · 15.1 chunks/s",
+      "value": "2642 ms"
+    },
+    {
+      "label": "模型加载（首次）",
+      "detail": "wasm/q8",
+      "value": "527 ms"
+    }
+  ]
+}

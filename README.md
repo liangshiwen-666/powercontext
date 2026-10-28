@@ -26,9 +26,9 @@ git merge-base --is-ancestor d647275c308e09b7b623f322a26f5c4e85734fb0 HEAD
 | `minimax/` | MiniMax × OceanBase · SDD 上下文管理 | 源码、运行说明、验证样例、证据与记录 |
 | `dify/` | Dify 生态集成 | 插件与验证材料 |
 | `qoder/` | Qoder 生态集成 | 集成材料 |
-| `stepfun/` | 阶跃星辰（预留） | 占位 |
+| `stepfun/` | 阶跃星辰 × seekdb · 端侧 AI 推理与混合检索 | 可运行的 Web 应用（浏览器本地向量化 + seekdb 混合检索）、源码与脚本、一页技术说明、实测数据 |
 
-各目录内的 `README.md` / `docs/` 为该赛题的运行说明与验证材料。
+各目录内的 `README.md` / `SUBMISSION.md` / `docs/` 为该赛题的运行说明、填表信息与验证材料。
 
 ## 提测信息
 

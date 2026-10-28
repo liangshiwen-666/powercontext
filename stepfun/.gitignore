@@ -1,0 +1,10 @@
+node_modules/
+web/dist/
+web/public/models/
+stepfun-data/
+.models-cache/
+*.log
+.DS_Store
+.env.local
+__pycache__/
+*.pyc

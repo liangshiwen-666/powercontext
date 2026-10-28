@@ -1,0 +1,314 @@
+{
+  "label": "fp32",
+  "dtype": "fp32",
+  "model": "Xenova/bge-small-zh-v1.5",
+  "mode": "seekdb-hybrid",
+  "docs": 40,
+  "chunks": 40,
+  "queries": 49,
+  "loadMs": 300,
+  "docEmbedMs": 442,
+  "chunksPerSecond": 90.48,
+  "queryEmbedMsAvg": 7.84,
+  "writeMs": 282,
+  "refreshMs": 0,
+  "recall5": 0.9796,
+  "ndcg10": 0.9118,
+  "mrr": 0.8878,
+  "perQuery": [
+    {
+      "query": "seekdb 能不能在一条 SQL 里同时做向量和关键词检索",
+      "target": "混合检索与 RRF 融合",
+      "rank": 2,
+      "inTop5": 1
+    },
+    {
+      "query": "RRF 为什么不需要把分数归一化",
+      "target": "混合检索与 RRF 融合",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "HNSW 的 ef_search 参数是干什么的",
+      "target": "HNSW 向量索引",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "M 和 ef_construction 变大有什么代价",
+      "target": "HNSW 向量索引",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "中文全文检索用哪个分词器比较好",
+      "target": "全文索引与中文分词",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "刚导入的文档搜不到是什么原因",
+      "target": "索引刷新与最终一致性",
+      "rank": 2,
+      "inTop5": 1
+    },
+    {
+      "query": "为什么批量导入时不要每条都刷新索引",
+      "target": "索引刷新与最终一致性",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "向量索引是同步维护还是异步维护",
+      "target": "索引刷新与最终一致性",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "嵌入式模式和服务器模式有什么区别",
+      "target": "嵌入式模式与服务器模式",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "浏览器里怎么运行 embedding 模型",
+      "target": "端侧推理与 Transformers.js",
+      "rank": 2,
+      "inTop5": 1
+    },
+    {
+      "query": "WebGPU 相比 WebAssembly 能快多少",
+      "target": "WebGPU 推理后端",
+      "rank": 2,
+      "inTop5": 1
+    },
+    {
+      "query": "设备不支持 GPU 时应用应该怎么处理",
+      "target": "WASM 后端与降级策略",
+      "rank": 0,
+      "inTop5": 0
+    },
+    {
+      "query": "怎么让用户知道现在用的是哪个推理后端",
+      "target": "WASM 后端与降级策略",
+      "rank": 2,
+      "inTop5": 1
+    },
+    {
+      "query": "动态量化需要准备校准数据集吗",
+      "target": "INT8 动态量化",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "INT8 量化之后检索质量会下降多少",
+      "target": "INT8 动态量化",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "模型压缩比应该怎么计算",
+      "target": "量化前后的体积口径",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "文本切块留多少重叠比较合适",
+      "target": "文本切块策略",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "为什么检索效果取决于切块粒度",
+      "target": "文本切块策略",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "RAG 的检索质量用什么指标评测",
+      "target": "RAG 的基本链路",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "查询和文档需要不同的编码前缀吗",
+      "target": "查询侧与文档侧的编码差异",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "切换知识库集合时界面要注意什么",
+      "target": "增量导入与状态管理",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "阶跃星辰发布了哪些模型",
+      "target": "阶跃星辰与多模态模型",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "性能测试应该报告哪几个阶段",
+      "target": "性能计时的口径",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "首次加载和预热后的性能要不要分开报告",
+      "target": "性能计时的口径",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "只知道词频的检索方法为什么匹配不了同义词",
+      "target": "BM25 与稀疏向量检索",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "稀疏向量和稠密向量各自擅长什么场景",
+      "target": "BM25 与稀疏向量检索",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "向量长度会不会影响相似度分数",
+      "target": "余弦距离、内积与 L2",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "删除大量文档之后索引质量会下降吗",
+      "target": "索引重建与增量合并",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "过滤条件应该先筛选再算相似度吗",
+      "target": "元数据过滤与标量索引",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "同一份文件导入两次结果里出现重复内容",
+      "target": "文档 ID 与重复导入",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "块切得太小会带来什么副作用",
+      "target": "分块大小与召回率",
+      "rank": 2,
+      "inTop5": 1
+    },
+    {
+      "query": "WebGL 为什么不适合跑神经网络",
+      "target": "WebGL 与 WebGPU 的区别",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "小模型怎么学到大模型的能力",
+      "target": "模型蒸馏与小模型",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "微调时只训练很少的参数是什么方法",
+      "target": "LoRA 微调",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "ONNX 图里的动态维度是什么意思",
+      "target": "ONNX 模型格式",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "模型第二次加载为什么快很多",
+      "target": "浏览器缓存与 Cache API",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "SharedArrayBuffer 需要哪些响应头才能用",
+      "target": "跨源隔离与多线程 WASM",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "浏览器存储空间不够了怎么处理",
+      "target": "浏览器存储配额",
+      "rank": 2,
+      "inTop5": 1
+    },
+    {
+      "query": "断网之后应用还能完成检索吗",
+      "target": "离线优先与 PWA",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "怎么保证文档内容不离开这台电脑",
+      "target": "隐私与数据不出端",
+      "rank": 2,
+      "inTop5": 1
+    },
+    {
+      "query": "导入进行到一半能不能取消",
+      "target": "进度反馈与取消",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "数据库没启动时应该提示用户什么",
+      "target": "错误处理与重试",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "为什么要先跑几次热身再开始测量",
+      "target": "冷启动与预热",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "评测集里为什么要放主题相近的干扰文档",
+      "target": "评测集设计与干扰项",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "只报告最快的一次成绩有什么问题",
+      "target": "中位数、P95 与重复测量",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "用户点下检索到看到结果中间经历了什么",
+      "target": "端到端延迟的组成",
+      "rank": 2,
+      "inTop5": 1
+    },
+    {
+      "query": "写入的向量没有归一化会怎么样",
+      "target": "向量归一化与相似度一致性",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "融合排序里的 k 取大取小有什么区别",
+      "target": "RRF 的 k 参数",
+      "rank": 1,
+      "inTop5": 1
+    },
+    {
+      "query": "两个系统的差异多小才算没有差异",
+      "target": "中位数、P95 与重复测量",
+      "rank": 1,
+      "inTop5": 1
+    }
+  ]
+}

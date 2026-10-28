@@ -1,0 +1,56 @@
+{
+  "environment": {
+    "date": "2026-10-28",
+    "browser": "Microsoft Edge 156.0.4314.50 (headless=new)",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0",
+    "os": "Windows 11 x64",
+    "cpu": "local dev machine (see docs/TECH.md 5.2)",
+    "gpu": "headless WebGPU adapter (fp16 path available)",
+    "corpus": "40 docs / 40 chunks / 50 queries",
+    "seekdb": "1.4.0, server mode (docker quay.io/oceanbase/seekdb, 127.0.0.1:2881)",
+    "model": "Xenova/bge-small-zh-v1.5, dim 512, CLS pooling"
+  },
+  "runs": [
+    {
+      "config": "WebGPU + fp16",
+      "badge": "WebGPU · fp16",
+      "modelLoadFirstMs": 7168,
+      "modelLoadWarmMs": 830,
+      "ingestChunks": 40,
+      "ingestMs": 457,
+      "ingestChunksPerSecond": 87.5,
+      "writeAndRefreshMs": 566,
+      "searchMs": 30.3,
+      "benchRuns": 10,
+      "e2eP50Ms": 25.0,
+      "e2eP95Ms": 32.3,
+      "e2eMinMs": 21.0,
+      "e2eMaxMs": 32.3,
+      "top1": "文档 ID 与重复导入"
+    },
+    {
+      "config": "WASM + q8",
+      "badge": "WASM · q8",
+      "modelLoadFirstMs": null,
+      "modelLoadWarmMs": 527,
+      "ingestChunks": 40,
+      "ingestMs": 2642,
+      "ingestChunksPerSecond": 15.1,
+      "writeAndRefreshMs": 462,
+      "searchMs": 19.9,
+      "benchRuns": 10,
+      "e2eP50Ms": 21.4,
+      "e2eP95Ms": 29.4,
+      "e2eMinMs": 19.1,
+      "e2eMaxMs": 29.4,
+      "top1": "文档 ID 与重复导入"
+    }
+  ],
+  "notes": [
+    "modelLoadFirstMs is the first ever load in a fresh browser profile (graph compile + parse); warm loads reuse the browser cache.",
+    "ingest = 40 chunks through the Web Worker only; writeAndRefresh = HTTP batch + seekdb write + refresh_index.",
+    "e2e = click to rendered result, measured by the in-app ×10 benchmark (warm-up run discarded).",
+    "Single query embedding is tiny, so E2E is dominated by HTTP + seekdb; bulk embedding is where WebGPU wins (87.5 vs 15.1 chunks/s).",
+    "Headless modifier for the WASM run: --disable-gpu, which makes navigator.gpu unusable and triggers the documented fallback banner."
+  ]
+}

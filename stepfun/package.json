@@ -1,0 +1,52 @@
+{
+  "name": "stepfun-mini-kb",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-local embedding + seekdb hybrid retrieval mini knowledge base (StepFun x seekdb, 2026 competition)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "tsx watch server/src/index.ts",
+    "dev:web": "vite --config web/vite.config.ts",
+    "dev:docker": "docker compose up -d && npm run dev",
+    "dev:embedded": "concurrently -k -n server,web -c cyan,magenta \"tsx watch server/src/index.ts --embedded\" \"npm:dev:web\"",
+    "dev:server-only": "tsx watch server/src/index.ts --server",
+    "build": "vite build --config web/vite.config.ts",
+    "start": "node --import tsx server/src/index.ts",
+    "fetch:model": "node scripts/fetch-model.mjs",
+    "fetch:model:all": "node scripts/fetch-model.mjs --all",
+    "seed": "node scripts/seed.mjs",
+    "selftest": "tsx scripts/selftest.ts",
+    "browser:check": "node scripts/browser-check.mjs",
+    "eval": "tsx scripts/eval.ts",
+    "typecheck": "tsc -p web/tsconfig.json --noEmit && tsc -p server/tsconfig.json --noEmit"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "onnxruntime-node",
+      "protobufjs"
+    ]
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.1",
+    "express": "^5.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "seekdb": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}

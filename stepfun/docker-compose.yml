@@ -1,0 +1,14 @@
+services:
+  seekdb:
+    # docker.io is often unreachable from mainland networks; quay.io works reliably.
+    image: ${SEEKDB_IMAGE:-quay.io/oceanbase/seekdb:latest}
+    container_name: stepfun-seekdb
+    ports:
+      - "2881:2881"
+    volumes:
+      - ./stepfun-data/docker:/var/lib/oceanbase
+    # Defaults are fine for a demo corpus (a few hundred chunks).
+    environment:
+      DATAFILE_SIZE: 2G
+      LOG_DISK_SIZE: 2G
+    restart: unless-stopped
