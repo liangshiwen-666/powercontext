@@ -1,11 +1,13 @@
 """Tests for :mod:`sddctx.ingest` — chunking rules and end-to-end ingestion.
 
 The chunking tests are pure filesystem work; the ingestion tests need a
-reachable seekdb server and use the dedicated ``sddctx_test`` database.
+reachable seekdb server and use a dedicated per-process database
+(``sddctx_test_<pid>``, override with ``SDDCTX_TEST_DB``).
 """
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -22,7 +24,8 @@ from sddctx.store import MaterialStore
 
 HOST = os.environ.get("SEEKDB_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SEEKDB_PORT", "2881"))
-TEST_DB = "sddctx_test"
+# unique per pytest process so concurrent runs cannot disturb each other's data
+TEST_DB = os.environ.get("SDDCTX_TEST_DB") or f"sddctx_test_{os.getpid()}"
 DEMO_ROOT = MINIMAX_ROOT / "demo"
 
 
@@ -136,7 +139,7 @@ def test_spec_chunks_do_not_overlap(chunks: list[Chunk]) -> None:
             by_path.setdefault(chunk["path"], []).append(chunk)
     for path, items in by_path.items():
         ordered = sorted(items, key=lambda c: c["line_start"])
-        for previous, current in zip(ordered, ordered[1:]):
+        for previous, current in zip(ordered, ordered[1:], strict=False):  # noqa: RUF007
             assert current["line_start"] > previous["line_end"], (path, previous, current)
 
 
@@ -229,7 +232,7 @@ def test_ingest_writes_jsonl_and_counts(
     archive = Path(result["archive"])
     assert archive.is_file()
     assert archive.parent == tmp_path
-    assert re.fullmatch(r"ingest-\d{8}T\d{6}Z\.jsonl", archive.name), archive.name
+    assert re.fullmatch(r"ingest-\d{8}T\d{12}Z\.jsonl", archive.name), archive.name
 
     lines = archive.read_text(encoding="utf-8").splitlines()
     assert len(lines) == len(chunks)
@@ -248,6 +251,9 @@ def test_ingest_is_idempotent(store: MaterialStore, demo_root: Path, tmp_path: P
     assert second["chunks"] == first["chunks"] == len(chunks)
     assert store.stats() == stats_first
     assert sum(store.stats().values()) == len(chunks)
+    # 每次 ingest 的快照必须是独立文件（时间戳含微秒，不能同秒覆盖）
+    assert first["archive"] != second["archive"]
+    assert Path(first["archive"]).is_file() and Path(second["archive"]).is_file()
 
 
 @REQUIRES_SEEKDB
@@ -327,3 +333,65 @@ def test_ingest_honours_specs_override(
     hits = store.search("自定义需求", kinds=["spec"])
     assert hits
     assert hits[0]["path"].endswith("custom.md")
+    # specs 目录在 minimax 根之外：path 退化为绝对 POSIX 路径，citation 仍然可用
+    assert hits[0]["path"].startswith("/"), hits[0]["path"]
+    assert (hits[0]["line_start"], hits[0]["line_end"]) == (3, 4), "REQ 标题在第 3 行、正文第 4 行"
+    assert hits[0]["citation"] == f"{hits[0]['path']}:3-4"
+
+
+@REQUIRES_SEEKDB
+def test_ingest_with_missing_specs_dir_yields_no_specs(
+    store: MaterialStore, demo_root: Path, tmp_path: Path
+) -> None:
+    missing = tmp_path / "does-not-exist"
+    result = ingest(store, demo_root, specs=missing, archive_dir=tmp_path)
+    assert result["counts"]["spec"] == 0
+    assert result["counts"]["code"] > 0 and result["counts"]["test"] > 0
+    assert store.stats()["spec"] == 0
+
+
+@REQUIRES_SEEKDB
+def test_ingest_with_empty_reset_kinds_keeps_existing_rows(
+    store: MaterialStore, demo_root: Path, tmp_path: Path
+) -> None:
+    ingest(store, demo_root, archive_dir=tmp_path)
+    stats_before = store.stats()
+    result = ingest(store, demo_root, reset_kinds=(), archive_dir=tmp_path)
+    assert result["chunks"] == sum(stats_before.values())
+    assert store.stats() == stats_before
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("pylibseekdb") is None,
+    reason="pylibseekdb 未安装（仅 Linux/macOS）；本次运行跳过嵌入式 ingest 验证",
+)
+def test_ingest_into_embedded_store(tmp_path: Path, demo_root: Path) -> None:
+    """Full ingest → search cycle on the embedded route (no server involved)."""
+
+    embedded_cfg = SeekDBConfig(
+        host="127.0.0.1",
+        port=1,  # 故意不可用：不允许回落 server
+        user="root",
+        password="",
+        database="sddctx_test",
+        embedded_dir=tmp_path / "seekdb-data",
+    )
+    material = MaterialStore.from_config(embedded_cfg)
+    try:
+        material.init_schema()
+        result = ingest(material, demo_root, archive_dir=tmp_path)
+        assert result["chunks"] == sum(result["counts"].values())
+        store_counts = material.stats()
+        assert store_counts == result["counts"]
+        assert result["counts"]["spec"] == 9
+
+        # 中文检索 / 需求号检索 / 套件枚举在嵌入式引擎上都要工作
+        spec_hits = material.search("状态筛选", kinds=["spec"], limit=3)
+        assert spec_hits and spec_hits[0]["path"] == "demo/specs/orders.md"
+        req_hits = material.search("REQ-ORD-007", kinds=["spec"], limit=3)
+        assert req_hits and req_hits[0]["symbol"] == "REQ-ORD-007"
+        suites = material.list_chunks(["test"], path_contains="/target/", limit=100)
+        assert len(suites) == 6
+    finally:
+        material.reset()
+        material.close()

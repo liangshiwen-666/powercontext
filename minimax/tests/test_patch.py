@@ -1,22 +1,26 @@
-"""Offline tests for ``sddctx.patch`` (real filesystem, no network).
+"""Offline tests for ``sddctx.patch`` — the pure-Python unified-diff engine.
 
-The business project lives in a *subdirectory* of a git repository
-(``repo/minimax/demo``).  ``git apply`` resolves patch paths relative to the
-repository root and silently skips them there, so the primary implementation
-uses GNU ``patch -p1 -d <dir>``; these tests cover both that default and the
-``git apply`` fallback.
+These tests must pass on a machine without GNU ``patch`` or ``git``: apply and
+reverse never shell out.  The final test replays the real competition patch on a
+copy of ``demo/`` and runs the business test suites, proving the engine produces
+the same before/after behaviour as the recorded evidence.
 """
 
 from __future__ import annotations
 
+import hashlib
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-import sddctx.patch as patch_module
 from sddctx.patch import apply_patch, extract_unified_diff, reverse_patch
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEMO = REPO_ROOT / "demo"
+REAL_PATCH = REPO_ROOT / "patches" / "0001-orders-filters.patch"
 
 ORIGINAL = "def add(a, b):\n    return a - b\n"
 PATCHED = "def add(a, b):\n    return a + b\n"
@@ -33,47 +37,46 @@ DIFF = (
 
 FENCED = "这是模型给出的补丁：\n\n```diff\n" + DIFF + "```\n\n希望有帮助。"
 
-HAS_PATCH = shutil.which("patch") is not None
-requires_patch = pytest.mark.skipif(not HAS_PATCH, reason="GNU patch is not available")
+
+def read_bytes(path: Path) -> bytes:
+    return path.read_bytes()
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
+def snapshot(root: Path, *, subdirs: tuple[str, ...] = (".",)) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for sub in subdirs:
+        base = root if sub == "." else root / sub
+        for path in sorted(base.rglob("*")):
+            if not path.is_file():
+                continue
+            if "__pycache__" in path.parts or ".pytest_cache" in path.parts or ".venv" in path.parts:
+                continue
+            result[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return result
 
 
 @pytest.fixture()
 def demo(tmp_path: Path) -> Path:
-    """Plain directory (no git repository): the ``patch -d <dir>`` happy path."""
-
-    repo = tmp_path / "demo"
-    (repo / "app").mkdir(parents=True)
-    (repo / "app" / "x.py").write_text(ORIGINAL, encoding="utf-8")
-    return repo
+    root = tmp_path / "demo"
+    (root / "app").mkdir(parents=True)
+    (root / "app" / "x.py").write_text(ORIGINAL, encoding="utf-8")
+    return root
 
 
 @pytest.fixture()
 def nested_demo(tmp_path: Path) -> Path:
-    """Real toolkit layout: ``demo`` is a subdirectory of a git repository.
+    """Real toolkit layout: ``demo`` is a subdirectory of a git repository."""
 
-    This is exactly the layout where ``git apply`` used to print
-    ``Skipped patch 'app/x.py'`` and still exit 0.
-    """
-
-    if shutil.which("git") is None:
-        pytest.skip("git is not available")
     repo = tmp_path / "toolkit"
     (repo / "demo" / "app").mkdir(parents=True)
     (repo / "demo" / "app" / "x.py").write_text(ORIGINAL, encoding="utf-8")
-    _git(repo, "init", "-q")
-    _git(repo, "config", "user.email", "tests@example.com")
-    _git(repo, "config", "user.name", "sddctx tests")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-qm", "init")
+    if shutil.which("git") is not None:
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-qm", "init"], cwd=repo, check=True, capture_output=True)
     return repo / "demo"
-
-
-def read_x(repo: Path) -> str:
-    return (repo / "app" / "x.py").read_text(encoding="utf-8")
 
 
 # --------------------------------------------------------------------------
@@ -94,8 +97,7 @@ def test_extract_from_patch_fence():
 
 
 def test_extract_from_unlabelled_fence():
-    text = "```\n" + DIFF + "```"
-    assert extract_unified_diff(text) == DIFF
+    assert extract_unified_diff("```\n" + DIFF + "```") == DIFF
 
 
 def test_extract_bare_diff_with_surrounding_prose():
@@ -115,6 +117,14 @@ def test_extract_multiple_blocks_picks_the_diff():
     assert extract_unified_diff(text) == DIFF
 
 
+def test_extract_multiple_diff_fences_returns_first():
+    other = DIFF.replace("x.py", "y.py").replace("return a - b", "return a - c").replace(
+        "return a + b", "return a + c"
+    )
+    text = "```diff\n" + DIFF + "```\n中间说明\n```diff\n" + other + "```"
+    assert extract_unified_diff(text) == DIFF
+
+
 def test_extract_returns_none_without_diff():
     assert extract_unified_diff("") is None
     assert extract_unified_diff("模型说：我无法完成这个任务。") is None
@@ -122,98 +132,73 @@ def test_extract_returns_none_without_diff():
 
 
 def test_extract_returns_none_for_truncated_header():
-    truncated = "--- a/app/x.py\n+++ b/app/x.py\n（没有 hunk）\n"
-    assert extract_unified_diff(truncated) is None
+    assert extract_unified_diff("--- a/app/x.py\n+++ b/app/x.py\n（没有 hunk）\n") is None
 
 
 # --------------------------------------------------------------------------
-# GNU patch default path
+# pure-Python engine: basics
 # --------------------------------------------------------------------------
-@requires_patch
-def test_default_tool_is_gnu_patch(demo: Path):
+def test_tool_is_python_and_check_only_does_not_modify(demo: Path):
     result = apply_patch(demo, FENCED, check_only=True)
-    assert result["tool"] == "patch"
-    assert result["ok"] is True
-    assert result["applied"] is False
-    assert read_x(demo) == ORIGINAL
-
-
-@requires_patch
-def test_apply_in_plain_directory_without_git(demo: Path):
-    result = apply_patch(demo, FENCED)
     assert result["ok"] is True, result
-    assert result["applied"] is True
-    assert result["tool"] == "patch"
-    assert read_x(demo) == PATCHED
-    assert not list(demo.rglob("*.rej")), "rejects must not be written into the worktree"
-    assert not list(demo.rglob("*.orig")), "backup files must not be written into the worktree"
+    assert result["tool"] == "python"
+    assert result["applied"] is False
+    assert result["returncode"] == 0
+    assert read_bytes(demo / "app" / "x.py") == ORIGINAL.encode()
 
 
-@requires_patch
-def test_apply_then_reverse_round_trip(demo: Path):
-    apply_result = apply_patch(demo, FENCED)
-    assert apply_result["ok"] is True, apply_result
-    assert apply_result["applied"] is True
-    assert read_x(demo) == PATCHED
+def test_apply_then_reverse_is_byte_identical(demo: Path):
+    before = read_bytes(demo / "app" / "x.py")
+    applied = apply_patch(demo, FENCED)
+    assert applied["ok"] is True, applied
+    assert applied["applied"] is True
+    assert read_bytes(demo / "app" / "x.py") == PATCHED.encode()
 
-    reverse_result = reverse_patch(demo, FENCED)
-    assert reverse_result["ok"] is True, reverse_result
-    assert reverse_result["applied"] is True
-    assert read_x(demo) == ORIGINAL
+    reversed_ = reverse_patch(demo, FENCED)
+    assert reversed_["ok"] is True, reversed_
+    assert reversed_["applied"] is True
+    assert read_bytes(demo / "app" / "x.py") == before
 
 
-@requires_patch
-def test_second_apply_is_rejected_not_silently_reversed(demo: Path):
-    """``patch --batch`` would otherwise assume ``-R``; we pass ``--forward``."""
-
-    first = apply_patch(demo, FENCED)
-    assert first["ok"] is True
-
+def test_second_apply_fails_cleanly_not_silently_reversed(demo: Path):
+    assert apply_patch(demo, FENCED)["ok"] is True
     second = apply_patch(demo, FENCED)
     assert second["ok"] is False
     assert second["applied"] is False
-    # The file must still be in the *patched* state (no accidental reverse).
-    assert read_x(demo) == PATCHED
-    assert second["returncode"] != 0
+    assert "context mismatch" in second["stderr"]
+    assert read_bytes(demo / "app" / "x.py") == PATCHED.encode()
 
 
-@requires_patch
-def test_reverse_on_clean_tree_fails_without_touching_files(demo: Path):
-    result = reverse_patch(demo, FENCED)
-    assert result["ok"] is False
-    assert result["applied"] is False
-    assert read_x(demo) == ORIGINAL
-    assert result["stderr"] or result["stdout"]
-
-
-@requires_patch
-def test_apply_invalid_context_fails_cleanly(demo: Path):
-    bad_patch = DIFF.replace("-    return a - b", "-    return a - z")
+def test_context_mismatch_reports_file_hunk_and_line(demo: Path):
+    bad_patch = DIFF.replace("-    return a - b", "-    return a - zzz")
     result = apply_patch(demo, bad_patch)
     assert result["ok"] is False
     assert result["applied"] is False
-    assert "FAILED" in (result["stdout"] + result["stderr"])
-    assert read_x(demo) == ORIGINAL
+    message = result["stderr"]
+    assert "context mismatch" in message
+    assert "app/x.py" in message
+    assert "hunk #1" in message
+    assert ":2" in message or "line 2" in message
+    assert "return a - zzz" in message
+    assert read_bytes(demo / "app" / "x.py") == ORIGINAL.encode()
 
 
-@requires_patch
-def test_reverse_check_only_detects_state_without_modifying(demo: Path):
-    """``cli.py`` uses ``reverse_patch(..., check_only=True)`` for before/after."""
+def test_reverse_on_clean_tree_fails_without_touching_files(demo: Path):
+    result = reverse_patch(demo, FENCED, check_only=True)
+    assert result["ok"] is False
+    assert result["applied"] is False
+    assert read_bytes(demo / "app" / "x.py") == ORIGINAL.encode()
+    assert "context mismatch" in result["stderr"]
 
-    applied = apply_patch(demo, FENCED)
-    assert applied["ok"] is True
 
+def test_reverse_check_only_detects_after_state(demo: Path):
+    assert apply_patch(demo, FENCED)["ok"] is True
     detected = reverse_patch(demo, FENCED, check_only=True)
     assert detected["ok"] is True
     assert detected["applied"] is False
-    assert read_x(demo) == PATCHED  # check does not change the worktree
-
-    restored = reverse_patch(demo, FENCED)
-    assert restored["ok"] is True and restored["applied"] is True
-    assert read_x(demo) == ORIGINAL
+    assert read_bytes(demo / "app" / "x.py") == PATCHED.encode()
 
 
-@requires_patch
 def test_apply_without_any_diff_returns_error(demo: Path):
     result = apply_patch(demo, "没有补丁，只有解释。")
     assert result["ok"] is False
@@ -221,52 +206,273 @@ def test_apply_without_any_diff_returns_error(demo: Path):
     assert "no unified diff" in result["stderr"]
 
 
-# --------------------------------------------------------------------------
-# real-layout regression (demo is a subdirectory of a git repo)
-# --------------------------------------------------------------------------
-@requires_patch
-def test_apply_inside_git_repo_subdirectory(nested_demo: Path):
-    """Even inside ``repo/demo`` GNU patch only touches ``demo/app/x.py``.
-
-    The previous ``git apply`` implementation resolved ``a/app/x.py`` against
-    the repository root, printed ``Skipped patch`` and exited 0.
-    """
-
-    check = apply_patch(nested_demo, FENCED, check_only=True)
-    assert check["ok"] is True, check
-    assert read_x(nested_demo) == ORIGINAL
-
+def test_engine_works_inside_git_repo_subdirectory(nested_demo: Path):
     applied = apply_patch(nested_demo, FENCED)
     assert applied["ok"] is True, applied
-    assert applied["applied"] is True
-    assert "Skipped patch" not in (applied["stdout"] + applied["stderr"])
-    assert read_x(nested_demo) == PATCHED
+    assert applied["tool"] == "python"
+    assert read_bytes(nested_demo / "app" / "x.py") == PATCHED.encode()
+    assert reverse_patch(nested_demo, FENCED)["ok"] is True
+    assert read_bytes(nested_demo / "app" / "x.py") == ORIGINAL.encode()
 
-    reversed_result = reverse_patch(nested_demo, FENCED)
-    assert reversed_result["ok"] is True, reversed_result
-    assert read_x(nested_demo) == ORIGINAL
+
+def test_git_style_headers_with_index_and_timestamps(demo: Path):
+    """Model output may be copied from `git diff`: index lines + tab timestamps."""
+
+    patch = (
+        "diff --git a/app/x.py b/app/x.py\n"
+        "index 1111111..2222222 100644\n"
+        "--- a/app/x.py\t2026-10-27 10:00:00.000000000 +0800\n"
+        "+++ b/app/x.py\t2026-10-27 10:01:00.000000000 +0800\n"
+        "@@ -1,2 +1,2 @@\n"
+        " def add(a, b):\n"
+        "-    return a - b\n"
+        "+    return a + b\n"
+    )
+    assert apply_patch(demo, patch)["ok"] is True
+    assert read_bytes(demo / "app" / "x.py") == PATCHED.encode()
+    assert reverse_patch(demo, patch)["ok"] is True
+    assert read_bytes(demo / "app" / "x.py") == ORIGINAL.encode()
+
+
+def test_utf8_content_round_trip(tmp_path: Path):
+    demo = tmp_path / "demo"
+    (demo / "app").mkdir(parents=True)
+    original = "描述 = '旧值'\n".encode("utf-8")
+    (demo / "app" / "x.py").write_bytes(original)
+    patch = (
+        "--- a/app/x.py\n"
+        "+++ b/app/x.py\n"
+        "@@ -1 +1 @@\n"
+        "-描述 = '旧值'\n"
+        "+描述 = '新值'\n"
+    )
+    assert apply_patch(demo, patch)["ok"] is True
+    assert (demo / "app" / "x.py").read_bytes() == "描述 = '新值'\n".encode("utf-8")
+    assert reverse_patch(demo, patch)["ok"] is True
+    assert read_bytes(demo / "app" / "x.py") == original
 
 
 # --------------------------------------------------------------------------
-# git apply fallback (only used when GNU patch is unavailable)
+# CRLF / EOF-newline handling
 # --------------------------------------------------------------------------
-def test_git_apply_fallback_when_patch_is_missing(nested_demo: Path, monkeypatch):
-    real_which = shutil.which
+def test_crlf_file_apply_and_reverse_preserves_bytes(tmp_path: Path):
+    demo = tmp_path / "demo"
+    (demo / "app").mkdir(parents=True)
+    crlf_original = b"def add(a, b):\r\n    return a - b\r\n"
+    (demo / "app" / "x.py").write_bytes(crlf_original)
 
-    def fake_which(name: str):
-        if name == "patch":
-            return None
-        return real_which(name)
+    applied = apply_patch(demo, DIFF)
+    assert applied["ok"] is True, applied
+    assert read_bytes(demo / "app" / "x.py") == b"def add(a, b):\r\n    return a + b\r\n"
 
-    monkeypatch.setattr(patch_module.shutil, "which", fake_which)
+    reversed_ = reverse_patch(demo, DIFF)
+    assert reversed_["ok"] is True, reversed_
+    assert read_bytes(demo / "app" / "x.py") == crlf_original
 
-    result = apply_patch(nested_demo, FENCED)
-    assert result["tool"] == "git", result
-    assert result["ok"] is True, result
-    assert result["applied"] is True
-    assert read_x(nested_demo) == PATCHED
 
-    reversed_result = reverse_patch(nested_demo, FENCED)
-    assert reversed_result["tool"] == "git"
-    assert reversed_result["ok"] is True
-    assert read_x(nested_demo) == ORIGINAL
+def test_no_newline_at_eof_round_trip(tmp_path: Path):
+    demo = tmp_path / "demo"
+    (demo / "app").mkdir(parents=True)
+    original = b"def add(a, b):\n    return a - b"  # no trailing newline
+    (demo / "app" / "x.py").write_bytes(original)
+    patch = (
+        "--- a/app/x.py\n"
+        "+++ b/app/x.py\n"
+        "@@ -1,2 +1,2 @@\n"
+        " def add(a, b):\n"
+        "-    return a - b\n"
+        "\\ No newline at end of file\n"
+        "+    return a + b\n"
+        "\\ No newline at end of file\n"
+    )
+    assert apply_patch(demo, patch)["ok"] is True
+    assert read_bytes(demo / "app" / "x.py") == b"def add(a, b):\n    return a + b"
+    assert reverse_patch(demo, patch)["ok"] is True
+    assert read_bytes(demo / "app" / "x.py") == original
+
+
+# --------------------------------------------------------------------------
+# create / delete / multi-file
+# --------------------------------------------------------------------------
+NEW_FILE_PATCH = (
+    "diff --git a/app/new_module.py b/app/new_module.py\n"
+    "new file mode 100644\n"
+    "index 0000000..1111111\n"
+    "--- /dev/null\n"
+    "+++ b/app/new_module.py\n"
+    "@@ -0,0 +1,3 @@\n"
+    '+"""new module."""\n'
+    "+\n"
+    "+VALUE = 42\n"
+)
+
+DELETE_FILE_PATCH = (
+    "diff --git a/app/old.py b/app/old.py\n"
+    "deleted file mode 100644\n"
+    "index 1111111..0000000\n"
+    "--- a/app/old.py\n"
+    "+++ /dev/null\n"
+    "@@ -1,2 +0,0 @@\n"
+    "-def old():\n"
+    "-    return 1\n"
+)
+
+
+def test_create_new_file_and_reverse_deletes_it(demo: Path):
+    assert not (demo / "app" / "new_module.py").exists()
+    check = apply_patch(demo, NEW_FILE_PATCH, check_only=True)
+    assert check["ok"] is True, check
+    assert not (demo / "app" / "new_module.py").exists()
+
+    applied = apply_patch(demo, NEW_FILE_PATCH)
+    assert applied["ok"] is True, applied
+    new_file = demo / "app" / "new_module.py"
+    assert new_file.read_bytes() == b'"""new module."""\n\nVALUE = 42\n'
+
+    reversed_ = reverse_patch(demo, NEW_FILE_PATCH)
+    assert reversed_["ok"] is True, reversed_
+    assert not new_file.exists()
+
+
+def test_delete_file_and_reverse_recreates_it(demo: Path):
+    old_file = demo / "app" / "old.py"
+    old_file.write_text("def old():\n    return 1\n", encoding="utf-8")
+    applied = apply_patch(demo, DELETE_FILE_PATCH)
+    assert applied["ok"] is True, applied
+    assert not old_file.exists()
+
+    reversed_ = reverse_patch(demo, DELETE_FILE_PATCH)
+    assert reversed_["ok"] is True, reversed_
+    assert old_file.read_bytes() == b"def old():\n    return 1\n"
+
+
+def test_multi_file_patch(tmp_path: Path):
+    demo = tmp_path / "demo"
+    (demo / "app").mkdir(parents=True)
+    (demo / "app" / "x.py").write_text(ORIGINAL, encoding="utf-8")
+    (demo / "app" / "y.py").write_text("VALUE = 1\n", encoding="utf-8")
+    multi = DIFF + (
+        "diff --git a/app/y.py b/app/y.py\n"
+        "--- a/app/y.py\n"
+        "+++ b/app/y.py\n"
+        "@@ -1 +1 @@\n"
+        "-VALUE = 1\n"
+        "+VALUE = 2\n"
+    )
+    assert apply_patch(demo, multi)["ok"] is True
+    assert read_bytes(demo / "app" / "x.py") == PATCHED.encode()
+    assert read_bytes(demo / "app" / "y.py") == b"VALUE = 2\n"
+    assert reverse_patch(demo, multi)["ok"] is True
+    assert read_bytes(demo / "app" / "x.py") == ORIGINAL.encode()
+    assert read_bytes(demo / "app" / "y.py") == b"VALUE = 1\n"
+
+
+# --------------------------------------------------------------------------
+# clear failures: missing file / unsafe paths / unsupported patch types
+# --------------------------------------------------------------------------
+def test_missing_source_file_is_reported(demo: Path):
+    missing = DIFF.replace("app/x.py", "app/missing.py")
+    result = apply_patch(demo, missing)
+    assert result["ok"] is False
+    assert "does not exist" in result["stderr"]
+    assert "app/missing.py" in result["stderr"]
+
+
+def test_path_traversal_is_rejected(demo: Path):
+    hostile = DIFF.replace("--- a/app/x.py", "--- a/../evil.py").replace(
+        "+++ b/app/x.py", "+++ b/../evil.py"
+    )
+    result = apply_patch(demo, hostile)
+    assert result["ok"] is False
+    assert "path traversal" in result["stderr"]
+    assert not (demo.parent / "evil.py").exists()
+
+
+def test_absolute_path_is_rejected(demo: Path):
+    hostile = DIFF.replace("+++ b/app/x.py", "+++ /tmp/evil.py")
+    result = apply_patch(demo, hostile)
+    assert result["ok"] is False
+    assert "absolute" in result["stderr"].lower()
+
+
+def test_rename_patch_is_rejected(demo: Path):
+    rename = (
+        "diff --git a/app/x.py b/app/y.py\n"
+        "similarity index 100%\n"
+        "rename from app/x.py\n"
+        "rename to app/y.py\n"
+        "--- a/app/x.py\n"
+        "+++ b/app/y.py\n"
+        "@@ -1,2 +1,2 @@\n"
+        " def add(a, b):\n"
+        "-    return a - b\n"
+        "+    return a + b\n"
+    )
+    result = apply_patch(demo, rename)
+    assert result["ok"] is False
+    assert "rename" in result["stderr"].lower()
+
+
+def test_binary_patch_is_rejected(demo: Path):
+    binary = (
+        "diff --git a/app/x.py b/app/x.py\n"
+        "new file mode 100644\n"
+        "GIT binary patch\n"
+        "literal 10\n"
+        "--- a/app/x.py\n"
+        "+++ b/app/x.py\n"
+        "@@ -1,2 +1,2 @@\n"
+        " def add(a, b):\n"
+        "-    return a - b\n"
+        "+    return a + b\n"
+    )
+    result = apply_patch(demo, binary)
+    assert result["ok"] is False
+    assert "binary" in result["stderr"].lower()
+
+
+# --------------------------------------------------------------------------
+# end-to-end: replay the real competition patch on a copy of demo/
+# --------------------------------------------------------------------------
+def _run_pytest(demo: Path, suite: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, "-m", "pytest", suite, "-q", "--tb=line", "-p", "no:cacheprovider"],
+        cwd=demo,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+
+
+@pytest.mark.skipif(
+    not DEMO.is_dir() or not REAL_PATCH.is_file(),
+    reason="demo/ or patches/0001-orders-filters.patch is not available",
+)
+def test_real_project_patch_before_after(tmp_path: Path):
+    demo = tmp_path / "demo"
+    shutil.copytree(DEMO, demo, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    patch_text = REAL_PATCH.read_text(encoding="utf-8")
+
+    # Normalise the observed tree state to "before" (the committed demo tree is
+    # the post-change state).
+    if reverse_patch(demo, patch_text, check_only=True)["ok"]:
+        normalised = reverse_patch(demo, patch_text)
+        assert normalised["ok"] is True, normalised["stderr"]
+    else:
+        assert apply_patch(demo, patch_text, check_only=True)["ok"], "demo tree is neither before nor after"
+
+    before_snapshot = snapshot(demo, subdirs=("app", "tests"))
+    assert _run_pytest(demo, "tests/target").returncode != 0
+
+    applied = apply_patch(demo, patch_text)
+    assert applied["ok"] is True, applied["stderr"]
+    after_snapshot = snapshot(demo, subdirs=("app", "tests"))
+    assert after_snapshot != before_snapshot
+    assert _run_pytest(demo, "tests/target").returncode == 0
+    assert _run_pytest(demo, "tests/regression").returncode == 0
+
+    reversed_ = reverse_patch(demo, patch_text)
+    assert reversed_["ok"] is True, reversed_["stderr"]
+    assert snapshot(demo, subdirs=("app", "tests")) == before_snapshot
+    assert _run_pytest(demo, "tests/target").returncode != 0

@@ -4,6 +4,13 @@ The verifier is the component that produces the "code change is effective"
 evidence: the *same* test files are executed against the pre-change tree and
 the post-change tree, and both transcripts (command, exit code, counts, full
 stdout, duration) are written to ``evidence/`` as JSON logs.
+
+JUnit XML is the source of truth for "same tests": :func:`evaluate` compares the
+``classname::name`` testcase sets of the before/after runs (not just counts or
+command strings), so a renamed/removed/added test flips the check to FAIL.
+
+The before tree is produced with the pure-Python unified-diff engine in
+:mod:`sddctx.patch`; no external ``patch``/``git`` binary is required.
 """
 
 from __future__ import annotations
@@ -19,7 +26,9 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Sequence
+
+from .patch import reverse_patch
 
 _PASSED = re.compile(r"(\d+) passed")
 _FAILED = re.compile(r"(\d+) failed")
@@ -65,8 +74,18 @@ def run_pytest(
 ) -> dict[str, Any]:
     """Run one pytest suite inside ``work_dir`` and write a JSON evidence log."""
 
-    python_exe = python or os.environ.get("SDDCTX_PYTHON") or sys.executable
+    python_exe = str(python or os.environ.get("SDDCTX_PYTHON") or sys.executable)
+    # ``demo.sh`` exports a repository-relative interpreter path; pytest runs
+    # with cwd=<temporary project tree>, so make it absolute.  Use abspath (not
+    # resolve) so a venv symlink is not replaced by the base interpreter, whose
+    # site-packages do not contain the project dependencies.
+    if not os.path.isabs(python_exe) and os.path.exists(python_exe):
+        python_exe = os.path.abspath(python_exe)
     junit_path = log_path.with_suffix(".junit.xml")
+    junit_path.parent.mkdir(parents=True, exist_ok=True)
+    # Absolute path: pytest runs with cwd=work_dir, so a relative --junitxml
+    # would be written inside the (possibly temporary) project tree.
+    junit_path = junit_path.resolve()
     command = [
         python_exe,
         "-m",
@@ -90,6 +109,7 @@ def run_pytest(
             text=True,
             timeout=timeout_s,
             env=env,
+            check=False,
         )
         exit_code = proc.returncode
         stdout = proc.stdout
@@ -101,6 +121,7 @@ def run_pytest(
         stderr = "TIMEOUT"
     elapsed = round(time.monotonic() - t0, 3)
     counts = parse_junit(junit_path) or parse_counts(stdout)
+    testcase_ids = parse_junit_testcases(junit_path)
 
     record: dict[str, Any] = {
         "schema": "sddctx.test-log/v1",
@@ -113,6 +134,8 @@ def run_pytest(
         "exit_code": exit_code,
         "counts": counts,
         "junit": str(junit_path),
+        "testcase_ids": sorted(testcase_ids) if testcase_ids is not None else None,
+        "testcase_count": len(testcase_ids) if testcase_ids is not None else None,
         "code_version": code_version or {},
         "stdout": stdout,
         "stdout_sha256": _sha256_text(stdout),
@@ -157,39 +180,24 @@ def copy_project(src: Path, dst: Path) -> Path:
     return dst
 
 
-def _apply_patch_file(work_dir: Path, patch_file: Path, *, reverse: bool) -> subprocess.CompletedProcess[str]:
-    """Apply a unified diff with GNU patch, independent of git repository roots.
-
-    ``git apply`` resolves paths against the enclosing work tree, which silently
-    skips hunks when the project lives in a sub-directory; ``patch -d`` is
-    deterministic and works both inside and outside a repository.
-    """
-
-    command = [
-        "patch",
-        "-p1",
-        "-d",
-        str(work_dir),
-        "-i",
-        str(patch_file),
-        "--batch",
-        "--no-backup-if-mismatch",
-    ]
-    if reverse:
-        command.append("-R")
-    return subprocess.run(command, capture_output=True, text=True)
-
-
-def parse_junit(xml_path: Path) -> dict[str, int] | None:
-    """Parse a pytest JUnit XML report into pass/fail/error/skip counts."""
+def _junit_root(xml_path: Path) -> Any | None:
+    """Return the parsed XML root or ``None`` when missing/unparsable."""
 
     if not xml_path.is_file():
         return None
     import xml.etree.ElementTree as ET
 
     try:
-        root = ET.parse(str(xml_path)).getroot()
-    except ET.ParseError:
+        return ET.parse(str(xml_path)).getroot()
+    except (ET.ParseError, OSError):
+        return None
+
+
+def parse_junit(xml_path: Path) -> dict[str, int] | None:
+    """Parse a pytest JUnit XML report into pass/fail/error/skip counts."""
+
+    root = _junit_root(xml_path)
+    if root is None:
         return None
     suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
     totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
@@ -203,6 +211,37 @@ def parse_junit(xml_path: Path) -> dict[str, int] | None:
         "errors": totals["errors"],
         "skipped": totals["skipped"],
     }
+
+
+def parse_junit_testcases(xml_path: Path) -> set[str] | None:
+    """Return ``{"classname::name", ...}`` for every ``<testcase>`` element.
+
+    ``None`` means the JUnit XML is missing or unparsable (never confuse that
+    with an empty test set).  This is the authoritative "same test files were
+    executed" signal: it includes failed, errored and skipped tests, and is
+    stable across before/after runs as long as the same tests were collected.
+    """
+
+    root = _junit_root(xml_path)
+    if root is None:
+        return None
+    testcases: set[str] = set()
+    for testcase in root.iter("testcase"):
+        name = (testcase.get("name") or "").strip()
+        if not name:
+            continue
+        classname = (testcase.get("classname") or "").strip()
+        testcases.add(f"{classname}::{name}" if classname else name)
+    return testcases
+
+
+def record_testcases(record: dict[str, Any]) -> set[str] | None:
+    """Extract the testcase set referenced by one :func:`run_pytest` record."""
+
+    junit = record.get("junit")
+    if not junit:
+        return None
+    return parse_junit_testcases(Path(str(junit)))
 
 
 def make_before_tree(
@@ -222,14 +261,17 @@ def make_before_tree(
     before_dir = copy_project(demo_dir, root / "demo")
     patch_file = root / "reverse.patch"
     patch_file.write_text(patch_text, encoding="utf-8")
-    proc = _apply_patch_file(before_dir, patch_file, reverse=True)
+    # Pure-Python engine: works on any OS, no `patch`/`git` binary required.
+    result = reverse_patch(before_dir, patch_text)
     return {
         "before_dir": before_dir,
         "patch_path": patch_file,
         "patch_sha256": _sha256_text(patch_text),
-        "apply_exit_code": proc.returncode,
-        "apply_stderr": proc.stderr,
-        "ok": proc.returncode == 0,
+        "apply_exit_code": 0 if result.get("ok") else 1,
+        "apply_stderr": str(result.get("stderr") or ""),
+        "apply_stdout": str(result.get("stdout") or ""),
+        "apply_tool": result.get("tool"),
+        "ok": bool(result.get("ok")),
     }
 
 
@@ -278,12 +320,39 @@ def evaluate(
         after_regression["exit_code"] == 0 and after_regression["counts"]["failed"] == 0,
         f"exit={after_regression['exit_code']}, passed={after_regression['counts']['passed']}",
     )
+
+    # "Same test files were executed" is verified from the JUnit XML testcase
+    # sets (classname::name), not from command strings/counts: a renamed,
+    # removed or newly added test would otherwise slip through silently.
+    same_tests_ok = True
+    same_tests_details: list[str] = []
+    for suite_name, before_record, after_record in (
+        ("target", before_target, after_target),
+        ("regression", before_regression, after_regression),
+    ):
+        before_ids = record_testcases(before_record)
+        after_ids = record_testcases(after_record)
+        if before_ids is None or after_ids is None:
+            same_tests_ok = False
+            same_tests_details.append(f"{suite_name}: JUnit XML missing or unparsable")
+            continue
+        if not before_ids:
+            same_tests_ok = False
+            same_tests_details.append(f"{suite_name}: JUnit XML contains no testcases")
+            continue
+        if before_ids != after_ids:
+            same_tests_ok = False
+            only_before = sorted(before_ids - after_ids)[:5]
+            only_after = sorted(after_ids - before_ids)[:5]
+            same_tests_details.append(
+                f"{suite_name}: only-before={only_before} only-after={only_after}"
+            )
+        else:
+            same_tests_details.append(f"{suite_name}: {len(after_ids)} identical testcases")
     _check(
         "same test files were executed",
-        before_target["command"].split(" -q")[0] == after_target["command"].split(" -q")[0]
-        and before_target["counts"]["passed"] + target_failed_before
-        == after_target["counts"]["passed"] + after_target["counts"]["failed"] + after_target["counts"]["errors"],
-        "target suite collected the same number of tests before and after",
+        same_tests_ok,
+        "; ".join(same_tests_details) or "no JUnit data",
     )
     return {"ok": all(item["ok"] for item in checks), "checks": checks}
 

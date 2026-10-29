@@ -9,6 +9,10 @@ PYTHON=${PYTHON:-.venv/bin/python}
 if [ ! -x "$PYTHON" ]; then
   PYTHON=python3
 fi
+case "$PYTHON" in
+  /*) ;;
+  *) PYTHON="$PWD/$PYTHON" ;;
+esac
 
 echo "== platform =="
 uname -a || true
@@ -51,7 +55,7 @@ except Exception as exc:  # noqa: BLE001
 PY
 
 echo
-echo "== business project tests (baseline) =="
+echo "== business project tests (committed tree) =="
 "$PYTHON" -m pytest demo/tests -q 2>&1 | tail -5
 
 echo

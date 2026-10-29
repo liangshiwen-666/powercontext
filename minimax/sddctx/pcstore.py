@@ -19,9 +19,10 @@ Design notes (each one is a measured fact, not a guess):
   :class:`AtomicMemoryContent`; search accepts ``mode="text"`` (FTS) which needs no
   embedding model.
 * One Memory text value is capped at 8192 UTF-8 bytes, so long values are split before
-  they are written. PowerContext normalizes stored text with Unicode NFC plus
-  ``strip()``, so the splitter cuts inside tokens and never next to whitespace; stored
-  pieces stay byte-identical apart from whitespace at the real start/end of the value.
+  they are written. Caller text is normalized the way PowerContext stores it (Unicode
+  NFC plus ``strip()``) before splitting, and the splitter never cuts next to
+  whitespace or inside a combining sequence, so ``"".join(save(text))`` equals
+  ``NFC(text).strip()`` byte for byte.
 * The Handoff chain (work contract -> current-work boundary -> prepared handoff ->
   commit -> continue -> acknowledge -> task outcome -> continuity) is deterministic and
   needs no generation model.
@@ -34,13 +35,15 @@ cheap enough for a CLI invocation and keeps no background process alive between 
 from __future__ import annotations
 
 import asyncio
+import os
+import random
 import threading
 import time
 import unicodedata
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, AsyncIterator, Literal, Sequence
+from typing import Any, AsyncIterator, Awaitable, Callable, Literal, Sequence
 
 __all__ = [
     "DEFAULT_SCOPE_KEY",
@@ -67,6 +70,41 @@ MAX_LIST_LIMIT = 100
 
 MAX_WORK_ITEMS = 64
 """Work contracts, task outcomes and continuity project at most 64 items."""
+
+MAX_OPERATION_RETRIES = 4
+"""Retries for transient PowerContext bootstrap/write races (fresh database, WAL lock)."""
+
+_RETRY_DELAYS = (0.25, 0.5, 1.0, 2.0)
+"""Backoff between transient retries; 0.25 + 0.5 + 1.0 + 2.0 = 3.75 s of patience."""
+
+_TRANSIENT_MARKERS = (
+    "plan_changed",
+    "initialization baseline changed",
+    "database is locked",
+    "database table is locked",
+    "database schema is locked",
+    # A concurrent bootstrap can observe the winner's DDL halfway through: the second
+    # process may try to create a table the winner just committed ("already exists"),
+    # query a table that is not visible yet ("no such table"), or see a partially
+    # initialized database ("unknown_baseline", "partial database"). A fresh open after
+    # the winner finishes resolves all of them.
+    "already exists",
+    "no such table",
+    "duplicate column name",
+    "unknown_baseline",
+    "partial database",
+)
+"""Substrings of PowerContext/SQLite errors that a retry can resolve.
+
+Two CLI processes that open the *same brand-new* database at the same moment race the
+schema bootstrap: the loser gets ``MigrationError: plan_changed`` or a raw SQLite DDL /
+partial-state error (``table ... already exists``, ``unknown_baseline``). A fresh open
+after the winner committed the baseline succeeds, so the operation is retried instead of
+failing.
+"""
+
+BUSY_TIMEOUT_MS = 15_000
+"""SQLite writer patience; the first-open schema bootstrap can take a few seconds."""
 
 TaskOutcomeStatus = Literal["succeeded", "failed", "partial"]
 
@@ -117,11 +155,11 @@ def _fit_prefix(text: str, limit: int) -> int:
 def split_text(text: str, limit: int = MAX_TEXT_BYTES) -> list[str]:
     """Split ``text`` into pieces of at most ``limit`` UTF-8 bytes.
 
-    PowerContext normalizes every stored value with NFC plus ``strip()``, so a piece that
-    starts or ends with whitespace loses those characters. The splitter therefore cuts
-    inside a token and never next to whitespace, which keeps the stored pieces
-    byte-identical to the input. Only whitespace at the real start/end of ``text`` (which
-    PowerContext strips anyway) is affected.
+    ``"".join(split_text(text))`` always equals ``text``. Boundaries never fall next to
+    whitespace or inside a combining sequence, because PowerContext stores each value
+    with Unicode NFC plus ``strip()`` and such boundaries would change the stored text.
+    Callers that need an exact round trip should pass NFC-normalized text (``save`` does
+    this itself).
     """
 
     if limit < 1:
@@ -143,15 +181,22 @@ def split_text(text: str, limit: int = MAX_TEXT_BYTES) -> list[str]:
 
 
 def _avoid_whitespace_boundary(text: str, cut: int, window: int = 256) -> int:
-    """Move ``cut`` left until neither side of the boundary is whitespace."""
+    """Move ``cut`` left until the boundary is safe to split.
+
+    A safe boundary is not next to whitespace (PowerContext strips each stored value) and
+    does not separate a base character from a combining mark (which would change the NFC
+    form and could mangle the text).
+    """
 
     floor = max(1, cut - window)
-    candidate = cut
-    while candidate > floor:
-        if not text[candidate - 1].isspace() and (candidate >= len(text) or not text[candidate].isspace()):
+    for candidate in range(cut, floor - 1, -1):
+        left = text[candidate - 1]
+        right = text[candidate] if candidate < len(text) else ""
+        if not left.isspace() and not right.isspace() and not unicodedata.combining(right):
             return candidate
-        candidate -= 1
-    while candidate > 1 and text[candidate - 1].isspace():
+    # No safe spot inside the window: at least never split a combining sequence.
+    candidate = cut
+    while candidate > 1 and unicodedata.combining(text[candidate]):
         candidate -= 1
     return candidate if candidate > 0 else cut
 
@@ -168,17 +213,26 @@ def _normalize_stored(text: str) -> str:
     return unicodedata.normalize("NFC", text).strip()
 
 
-def _text_items(values: Sequence[str], field: str, *, limit: int = MAX_WORK_ITEMS) -> tuple[list[str], int]:
-    """Validate, split and cap a sequence of text items.
+def _clean_text(value: str, field: str) -> str:
+    """Validate one caller-supplied text value and normalize it the way PowerContext does."""
 
-    Returns the kept pieces (each within ``MAX_TEXT_BYTES``) and the number of input
-    items dropped because of the item-count ceiling.
+    cleaned = _normalize_stored(_require_text(value, field))
+    if not cleaned:
+        raise ValueError(f"{field} must contain non-whitespace text")
+    return cleaned
+
+
+def _text_items(values: Sequence[str], field: str, *, limit: int = MAX_WORK_ITEMS) -> tuple[list[str], int]:
+    """Validate, normalize, split and cap a sequence of text items.
+
+    Returns the kept pieces (each within ``MAX_TEXT_BYTES``) and the number of pieces
+    dropped because of the item-count ceiling.
     """
 
     pieces: list[str] = []
     dropped = 0
     for index, raw in enumerate(values):
-        text = _require_text(raw, f"{field}[{index}]")
+        text = _clean_text(raw, f"{field}[{index}]")
         for piece in split_text(text):
             if len(pieces) < limit:
                 pieces.append(piece)
@@ -229,15 +283,36 @@ def _order_saved(records: list[dict[str, Any]], pairs: Sequence[tuple[str, str]]
 _MODULES: SimpleNamespace | None = None
 _RUN_LOCK = threading.RLock()
 _LOOP: asyncio.AbstractEventLoop | None = None
+_LOOP_PID: int | None = None
 
 
 def _shared_loop() -> asyncio.AbstractEventLoop:
-    """Return this module's long-lived event loop, creating it on first use."""
+    """Return this module's long-lived event loop, creating it on first use.
 
-    global _LOOP
-    if _LOOP is None or _LOOP.is_closed():
+    The loop is recreated when it was closed or when the process forked: a loop inherited
+    across ``fork`` belongs to the parent and cannot be reused safely.
+    """
+
+    global _LOOP, _LOOP_PID
+    pid = os.getpid()
+    if _LOOP is None or _LOOP.is_closed() or _LOOP_PID != pid:
         _LOOP = asyncio.new_event_loop()
+        _LOOP_PID = pid
     return _LOOP
+
+
+def _is_transient(error: BaseException) -> bool:
+    """Return whether a failure is a retryable PowerContext bootstrap/SQLite race."""
+
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        message = str(current)
+        if any(marker in message for marker in _TRANSIENT_MARKERS):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
 
 _INSTALL_HINT = (
     "PowerContext 1.4.1 is required for sddctx.pcstore. Install it with:\n"
@@ -332,16 +407,16 @@ class TaskStateStore:
     def scope_id(self) -> str:
         """Return the durable Scope id for :attr:`scope_key` (creating it if needed)."""
 
-        return self._run(self._a_scope_id())
+        return self._run(lambda: self._a_scope_id())
 
     def save(self, entries: Sequence[tuple[str, str]]) -> list[dict[str, Any]]:
         """Write ``(kind, text)`` entries as Atomic Memories.
 
-        Each entry is split into 8192-byte pieces first, so one logical entry can yield
-        several records. Returns one ``{kind, text, ref, state}`` dict per created
-        record, in write order. Stored text is normalized by PowerContext (Unicode NFC,
-        leading/trailing whitespace stripped), so values keep their content but not
-        boundary whitespace.
+        Text is normalized exactly like PowerContext stores it (Unicode NFC, leading and
+        trailing whitespace stripped) and then split into 8192-byte pieces, so one logical
+        entry can yield several records. ``"".join(record["text"] for record in result)``
+        is ``NFC(entry_text).strip()`` byte for byte. Returns one ``{kind, text, ref,
+        state}`` dict per created record, in write order.
         """
 
         pairs: list[tuple[str, str]] = []
@@ -350,14 +425,14 @@ class TaskStateStore:
                 kind, text = entry
             except (TypeError, ValueError) as exc:
                 raise ValueError(f"entries[{index}] must be a (kind, text) pair") from exc
-            kind_text = _require_text(kind, f"entries[{index}].kind")
+            kind_text = _clean_text(kind, f"entries[{index}].kind")
             if len(kind_text) > 128:
                 raise ValueError(f"entries[{index}].kind must not exceed 128 characters")
-            body = _require_text(text, f"entries[{index}].text")
+            body = _clean_text(text, f"entries[{index}].text")
             pairs.extend((kind_text, piece) for piece in split_text(body))
         if not pairs:
             return []
-        return self._run(self._a_save(pairs))
+        return self._run(lambda: self._a_save(pairs))
 
     def list(self) -> list[dict[str, Any]]:
         """Return every active Memory record in this Scope.
@@ -366,7 +441,7 @@ class TaskStateStore:
         a specific presentation order should sort the result themselves.
         """
 
-        return self._run(self._a_list())
+        return self._run(lambda: self._a_list())
 
     def search(self, query: str, limit: int = 8) -> list[dict[str, Any]]:
         """Full-text search the Scope (``mode="text"``, no embedding model required)."""
@@ -374,7 +449,7 @@ class TaskStateStore:
         text = _require_text(query, "query")
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= MAX_LIST_LIMIT:
             raise ValueError(f"limit must be an integer between 1 and {MAX_LIST_LIMIT}")
-        return self._run(self._a_search(text, limit))
+        return self._run(lambda: self._a_search(text, limit))
 
     def prepare(self, query: str, max_bytes: int = 6000) -> dict[str, Any]:
         """Return bounded context for one prompt.
@@ -387,7 +462,7 @@ class TaskStateStore:
         text = _require_text(query, "query")
         if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or not 512 <= max_bytes <= 32768:
             raise ValueError("max_bytes must be an integer between 512 and 32768")
-        return self._run(self._a_prepare(text, max_bytes))
+        return self._run(lambda: self._a_prepare(text, max_bytes))
 
     def record_task_outcome(
         self,
@@ -411,10 +486,10 @@ class TaskStateStore:
         if status not in ("succeeded", "failed", "partial"):
             raise ValueError('status must be "succeeded", "failed" or "partial"')
 
-        objective_pieces = split_text(_require_text(objective, "objective"))
+        objective_pieces = split_text(_clean_text(objective, "objective"))
         done_pieces, done_dropped = _text_items(done, "done")
         todo_pieces, todo_dropped = _text_items(todo, "todo")
-        summary_pieces = split_text(_require_text(summary, "summary"))
+        summary_pieces = split_text(_clean_text(summary, "summary"))
 
         normalized_checks: list[tuple[str, str]] = []
         dropped_checks = 0
@@ -423,7 +498,7 @@ class TaskStateStore:
                 name, check_status = check
             except (TypeError, ValueError) as exc:
                 raise ValueError(f"checks[{index}] must be a (name, status) pair") from exc
-            clean_name = _require_text(name, f"checks[{index}].name")
+            clean_name = _clean_text(name, f"checks[{index}].name")
             clean_status = str(check_status).strip().lower()
             if clean_status not in _CHECK_STATUSES:
                 clean_status = "unknown"
@@ -445,17 +520,22 @@ class TaskStateStore:
             todo=tuple(todo_pieces),
             dropped={"done": done_dropped, "todo": todo_dropped, "checks": dropped_checks},
         )
-        return self._run(self._a_record_task_outcome(request))
+        return self._run(lambda: self._a_record_task_outcome(request))
 
     # -- async implementation -------------------------------------------
 
-    def _run(self, coro: Any) -> Any:
-        """Run one coroutine on a long-lived private loop.
+    def _run(self, operation: Callable[[], Awaitable[Any]]) -> Any:
+        """Run one operation on a long-lived private loop.
 
         Each method opens and closes a real runtime, so the loop must outlive the
         aiosqlite worker threads that PowerContext's SQLite profile starts; closing the
         loop after every call races those threads ("Event loop is closed"). A private
         loop owned by this module avoids that race and keeps the call synchronous.
+
+        Transient failures (two processes bootstrapping the same fresh database, SQLite
+        writer locks) are retried with backoff. Any other unexpected failure is wrapped in
+        :class:`PcStoreError` with the original exception chained, so a CLI reports one
+        actionable error instead of a raw sqlite3/PowerContext traceback.
         """
 
         try:
@@ -463,24 +543,47 @@ class TaskStateStore:
         except RuntimeError:
             pass
         else:
-            coro.close()
             raise PcStoreError(
                 "TaskStateStore methods are synchronous and cannot be called from a running "
                 "event loop; call them from a worker thread (asyncio.to_thread) instead."
             )
-        with _RUN_LOCK:
-            return _shared_loop().run_until_complete(coro)
+
+        last_error: Exception | None = None
+        for attempt in range(MAX_OPERATION_RETRIES + 1):
+            if attempt:
+                # Jitter keeps two racing processes from retrying in lockstep and
+                # colliding on the same bootstrap window again.
+                time.sleep(_RETRY_DELAYS[attempt - 1] * random.uniform(0.75, 1.25))
+            try:
+                with _RUN_LOCK:
+                    return _shared_loop().run_until_complete(operation())
+            except Exception as exc:
+                if isinstance(exc, (PcStoreError, ValueError)):
+                    if _is_transient(exc) and attempt < MAX_OPERATION_RETRIES:
+                        last_error = exc
+                        continue
+                    raise
+                if _is_transient(exc) and attempt < MAX_OPERATION_RETRIES:
+                    last_error = exc
+                    continue
+                raise PcStoreError(
+                    f"PowerContext task-state operation failed for {self.db_path}: {exc}"
+                ) from exc
+        raise PcStoreError(
+            f"PowerContext task-state operation kept failing for {self.db_path} after "
+            f"{MAX_OPERATION_RETRIES + 1} attempts"
+        ) from last_error
 
     @asynccontextmanager
     async def _runtime(self) -> AsyncIterator[Any]:
         modules = _pc()
         config = modules.BuiltinConfig(
-            database=modules.SQLiteConfig(url=self._db_url),
+            database=modules.SQLiteConfig(url=self._db_url, busy_timeout_ms=BUSY_TIMEOUT_MS),
         )
         manager = modules.open_builtin_runtime(config, scheduler_path=str(self._scheduler_path))
         try:
             runtime = await manager.__aenter__()
-        except Exception as exc:  # noqa: BLE001 - re-raised with a clear, chained error
+        except Exception as exc:
             raise PcStoreUnavailableError(
                 f"failed to open PowerContext runtime for database {self.db_path}: {exc}"
             ) from exc
@@ -506,7 +609,7 @@ class TaskStateStore:
                 f"parameters in {self.db_path}; keep the title/summary stable or use a new "
                 "scope_key"
             ) from exc
-        except Exception as exc:  # noqa: BLE001 - keep the original failure visible
+        except Exception as exc:
             raise PcStoreError(f"failed to create PowerContext scope: {exc}") from exc
         return scope.scope_id
 

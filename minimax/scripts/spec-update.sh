@@ -13,19 +13,24 @@ PYTHON=${PYTHON:-.venv/bin/python}
 if [ ! -x "$PYTHON" ]; then
   PYTHON=python3
 fi
+case "$PYTHON" in
+  /*) ;;
+  *) PYTHON="$PWD/$PYTHON" ;;
+esac
 export SDDCTX_PYTHON="$PYTHON"
 
 TASK=demo/tasks/orders-filters.task.md
 OUT=evidence/context
-mkdir -p "$OUT"
+ING=evidence/ingest
+mkdir -p "$OUT" "$ING"
 
 echo "== import v1.0 spec (initial data) =="
-"$PYTHON" -m sddctx ingest --specs demo/specs/history --json > "$OUT/ingest-v1.json"
+"$PYTHON" -m sddctx ingest --specs demo/specs/history --json > "$ING/ingest-v1.json"
 "$PYTHON" -m sddctx context --task "$TASK" --out "$OUT/spec-v1-context.json" >/dev/null
 echo "   context A: $OUT/spec-v1-context.json"
 
 echo "== re-import v2.0 spec (updated: REQ-ORD-006..009 added) =="
-"$PYTHON" -m sddctx ingest --json > "$OUT/ingest-v2.json"
+"$PYTHON" -m sddctx ingest --json > "$ING/ingest-v2.json"
 "$PYTHON" -m sddctx context --task "$TASK" --out "$OUT/spec-v2-context.json" >/dev/null
 echo "   context B: $OUT/spec-v2-context.json"
 

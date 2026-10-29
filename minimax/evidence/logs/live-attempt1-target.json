@@ -1,0 +1,33 @@
+{
+  "schema": "sddctx.test-log/v1",
+  "suite": "tests/target",
+  "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/target -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/live-attempt1-target.junit.xml",
+  "cwd": "/mnt/d/oceanbase/work-eco/repo/minimax/demo",
+  "started_at": "2026-10-29T05:36:02Z",
+  "duration_s": 1.175,
+  "timed_out": false,
+  "exit_code": 0,
+  "counts": {
+    "passed": 6,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "junit": "/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/live-attempt1-target.junit.xml",
+  "testcase_ids": [
+    "tests.target.test_orders_filters_target::test_filter_by_created_range_inclusive",
+    "tests.target.test_orders_filters_target::test_filter_by_min_amount_inclusive",
+    "tests.target.test_orders_filters_target::test_filter_by_status",
+    "tests.target.test_orders_filters_target::test_filters_compose",
+    "tests.target.test_orders_filters_target::test_invalid_created_range",
+    "tests.target.test_orders_filters_target::test_invalid_filter_values"
+  ],
+  "testcase_count": 6,
+  "code_version": {
+    "base_git_head": "62ae7f1729b68f10956f26a7f851bcd99b7ee6f7",
+    "tree_state": "live-attempt"
+  },
+  "stdout": "......                                                                   [100%]\n6 passed in 0.33s\n",
+  "stdout_sha256": "7910c4bc2f96d85dac2302aa9be0ebcc503449d857d4a908140cf5d9d7e2319c",
+  "stderr": ""
+}

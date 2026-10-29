@@ -16,7 +16,9 @@ from sddctx.minimax_client import (
     MiniMaxClient,
     MiniMaxError,
     MiniMaxNotConfigured,
+    build_edit_messages,
     build_patch_messages,
+    extract_file_writes,
 )
 
 FAKE_KEY = "sk-test-PLACEHOLDER-not-a-real-key"
@@ -89,7 +91,7 @@ def error_body(http_code: int, message: str, request_id: str = "req-test-401") -
 
 
 def make_post(responses, calls):
-    def fake_post(url, headers=None, json=None, timeout=None, **kwargs):  # noqa: A002 - mirror requests API
+    def fake_post(url, headers=None, json=None, timeout=None, **kwargs):
         calls.append({"url": url, "headers": headers, "json": json, "timeout": timeout})
         if not responses:
             raise AssertionError("fake requests.post called more times than expected")
@@ -215,15 +217,18 @@ def test_chat_writes_record_and_index(tmp_path: Path, monkeypatch):
     assert record["auth"]["api_key_present"] is True
     assert record["request"]["headers_redacted"]["Authorization"] == "***REDACTED***"
 
-    # index.jsonl appended and references the record
+    # index.jsonl appended and references the record with a *portable* path
     index_path = client.record_dir / "index.jsonl"
     lines = [line for line in index_path.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert len(lines) == 1
     index_entry = json.loads(lines[0])
-    assert index_entry["record_path"] == str(record_path)
+    assert index_entry["record_path"] == f"records/{record_path.name}"
+    assert not Path(index_entry["record_path"]).is_absolute()
+    assert ":" not in index_entry["record_path"].split("/")[0]
     assert index_entry["record_sha256"] == record["chain"]["record_sha256"]
     assert index_entry["prev_record_sha256"] is None
     assert index_entry["content_sha256"] == record["response"]["content_sha256"]
+    assert FAKE_KEY not in index_path.read_text(encoding="utf-8")
 
     # the request really went to the configured OpenAI-compatible path
     assert calls[0]["url"] == "https://api.minimax.cn/v1/chat/completions"
@@ -249,6 +254,30 @@ def test_record_sha256_chain_across_calls(tmp_path: Path, monkeypatch):
     second_record = json.loads(Path(second["record_path"]).read_text(encoding="utf-8"))
     assert second_record["chain"]["prev_record_sha256"] == first_record["chain"]["record_sha256"]
     assert first_record["chain"]["record_sha256"] != second_record["chain"]["record_sha256"]
+
+    # The chain hash must be recomputable from the record itself (tamper-evident).
+    for record in (first_record, second_record):
+        clone = json.loads(json.dumps(record))
+        stored = clone["chain"].pop("record_sha256")
+        canonical = json.dumps(clone, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+        assert stored == hashlib.sha256(canonical).hexdigest()
+
+
+def test_index_record_path_is_relative_to_minimax_root(tmp_path: Path, monkeypatch):
+    calls: list = []
+    monkeypatch.setattr(mc.requests, "post", make_post([FakeResponse(200, success_body())], calls))
+    record_dir = tmp_path / "minimax" / "records" / "minimax"
+    client = MiniMaxClient.from_config(make_config(), record_dir)
+
+    result = client.chat([{"role": "user", "content": "hi"}], tag="portable")
+
+    index_entry = json.loads((record_dir / "index.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    relative = index_entry["record_path"]
+    assert relative == f"records/minimax/{Path(result['record_path']).name}"
+    assert not relative.startswith("/")
+    assert ".." not in relative.split("/")
+    # Resolving the portable path against the minimax root must find the record.
+    assert (tmp_path / "minimax" / relative).is_file()
 
 
 # --------------------------------------------------------------------------
@@ -361,20 +390,21 @@ def test_401_is_not_retried_and_still_recorded(tmp_path: Path, monkeypatch):
 # prompt helper
 # --------------------------------------------------------------------------
 def test_build_patch_messages_contains_contract_and_citations():
-    messages = build_patch_messages(
-        task_text="为 GET /orders 增加 status 过滤（REQ-ORD-006）",
-        context_text="--- demo/app/service.py:89-140 ---\ndef list_orders(...): ...",
-        context_meta=[
-            {
-                "path": "demo/app/service.py",
-                "line_start": 89,
-                "line_end": 140,
-                "symbol": "list_orders",
-                "title": "订单列表过滤",
-                "kind": "code",
-            }
-        ],
-    )
+    with pytest.warns(DeprecationWarning):
+        messages = build_patch_messages(
+            task_text="为 GET /orders 增加 status 过滤（REQ-ORD-006）",
+            context_text="--- demo/app/service.py:89-140 ---\ndef list_orders(...): ...",
+            context_meta=[
+                {
+                    "path": "demo/app/service.py",
+                    "line_start": 89,
+                    "line_end": 140,
+                    "symbol": "list_orders",
+                    "title": "订单列表过滤",
+                    "kind": "code",
+                }
+            ],
+        )
 
     assert [m["role"] for m in messages] == ["system", "user"]
     system, user = messages[0]["content"], messages[1]["content"]
@@ -388,7 +418,8 @@ def test_build_patch_messages_contains_contract_and_citations():
 
 
 def test_build_patch_messages_without_meta_still_works():
-    messages = build_patch_messages("task", "context only", None)
+    with pytest.warns(DeprecationWarning):
+        messages = build_patch_messages("task", "context only", None)
     assert len(messages) == 2
     assert "context only" in messages[1]["content"]
     assert "未附带 citation" in messages[1]["content"]
@@ -397,12 +428,134 @@ def test_build_patch_messages_without_meta_still_works():
 def test_build_patch_messages_accepts_cli_meta_shape():
     """``cli.py`` passes ``{"task": {...}, "context_sha256": "..."}``."""
 
-    messages = build_patch_messages(
-        "task text",
-        "context with demo/app/service.py:1-10",
-        {"task": {"id": "orders-filters-v2", "title": "订单筛选"}, "context_sha256": "abc123"},
-    )
+    with pytest.warns(DeprecationWarning):
+        messages = build_patch_messages(
+            "task text",
+            "context with demo/app/service.py:1-10",
+            {"task": {"id": "orders-filters-v2", "title": "订单筛选"}, "context_sha256": "abc123"},
+        )
     user = messages[1]["content"]
     assert "orders-filters-v2" in user
     assert "context_sha256: abc123" in user
     assert "<unknown>" not in user
+
+
+# --------------------------------------------------------------------------
+# boundary behaviour (V1 audit item 4)
+# --------------------------------------------------------------------------
+def test_response_without_content_is_recorded(tmp_path: Path, monkeypatch):
+    calls: list = []
+    body = success_body(content="")
+    # Mimic a gateway response where the message has no content key at all.
+    del body["choices"][0]["message"]["content"]
+    monkeypatch.setattr(mc.requests, "post", make_post([FakeResponse(200, body)], calls))
+    client = make_client(tmp_path)
+
+    result = client.chat([{"role": "user", "content": "hi"}], tag="empty-content")
+
+    assert result["content"] == ""
+    assert result["finish_reason"] == "stop"
+    record = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+    assert record["outcome"] == "success"
+    assert record["response"]["content_sha256"] == hashlib.sha256(b"").hexdigest()
+
+
+def test_base_resp_error_with_http_200_is_an_error(tmp_path: Path, monkeypatch):
+    calls: list = []
+    body = success_body()
+    body["base_resp"] = {"status_code": 2013, "status_msg": "invalid parameters"}
+    monkeypatch.setattr(mc.requests, "post", make_post([FakeResponse(200, body)], calls))
+    client = make_client(tmp_path)
+
+    with pytest.raises(MiniMaxError) as excinfo:
+        client.chat([{"role": "user", "content": "hi"}], tag="base-resp-error")
+
+    error = excinfo.value
+    assert error.retryable is False
+    assert error.base_status_code == 2013
+    assert len(calls) == 1
+    record = json.loads(Path(error.record_path).read_text(encoding="utf-8"))
+    assert record["outcome"] == "error"
+    assert record["http_status"] == 200
+    assert record["response"]["body"]["base_resp"]["status_code"] == 2013
+
+
+def test_string_base_resp_zero_is_not_an_error(tmp_path: Path, monkeypatch):
+    calls: list = []
+    body = success_body()
+    body["base_resp"] = {"status_code": "0", "status_msg": ""}
+    monkeypatch.setattr(mc.requests, "post", make_post([FakeResponse(200, body)], calls))
+    client = make_client(tmp_path)
+
+    result = client.chat([{"role": "user", "content": "hi"}], tag="string-zero")
+    assert result["content"]
+    assert len(calls) == 1
+
+
+def test_retryable_base_resp_error_is_retried(tmp_path: Path, monkeypatch, _no_sleep):
+    calls: list = []
+    body = success_body()
+    body["base_resp"] = {"status_code": 1002, "status_msg": "rate limited"}
+    responses = [FakeResponse(200, body), FakeResponse(200, success_body())]
+    monkeypatch.setattr(mc.requests, "post", make_post(responses, calls))
+    client = make_client(tmp_path)
+
+    result = client.chat([{"role": "user", "content": "hi"}], tag="retry-base-resp")
+
+    assert result["content"]
+    assert len(calls) == 2
+    record = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+    assert record["attempts"][0]["base_status_code"] == 1002
+    assert record["attempts"][0]["retryable"] is True
+
+
+def test_very_long_response_content_is_recorded(tmp_path: Path, monkeypatch):
+    calls: list = []
+    long_content = "x" * 200_000
+    monkeypatch.setattr(
+        mc.requests, "post", make_post([FakeResponse(200, success_body(content=long_content))], calls)
+    )
+    client = make_client(tmp_path)
+
+    result = client.chat([{"role": "user", "content": "hi"}], tag="long-response")
+
+    assert len(result["content"]) == 200_000
+    record = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+    assert record["response"]["content_sha256"] == hashlib.sha256(long_content.encode()).hexdigest()
+    assert len(record["response"]["content"]) == 200_000
+
+
+# --------------------------------------------------------------------------
+# whole-file edit helpers (the live path; legacy diff helper is deprecated)
+# --------------------------------------------------------------------------
+def test_build_edit_messages_asks_for_whole_files():
+    messages = build_edit_messages(
+        "为订单接口增加筛选", "CONTEXT demo/app/service.py:1-10", {"path": "demo/app/service.py"}
+    )
+    assert [m["role"] for m in messages] == ["system", "user"]
+    system, user = messages[0]["content"], messages[1]["content"]
+    assert "=== FILE: app/service.py ===" in system
+    assert "完整" in system
+    assert "tests/" in system
+    assert "为订单接口增加筛选" in user
+
+
+def test_extract_file_writes_parses_sections():
+    text = (
+        "前言\n"
+        "=== FILE: app/service.py ===\n"
+        "```python\n"
+        "def f():\n"
+        "    return 1\n"
+        "```\n"
+        "=== FILE: app/routes.py ===\n"
+        "```python\n"
+        "ROUTES = []\n"
+        "```\n"
+    )
+    writes = extract_file_writes(text)
+    assert writes == {
+        "app/service.py": "def f():\n    return 1\n",
+        "app/routes.py": "ROUTES = []\n",
+    }
+    assert extract_file_writes("没有 FILE 段") == {}

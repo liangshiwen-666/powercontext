@@ -22,6 +22,7 @@ Design notes (validated against seekdb 1.4.0, see ``_research/seekdb-usage.md``)
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Sequence
 from typing import Any
 
@@ -33,6 +34,14 @@ SNIPPET_CHARS = 160
 DEFAULT_LIMIT = 10
 
 _TABLE = "ctx_doc"
+
+#: ``path`` column is ``VARCHAR(512)``.
+_PATH_MAX_CHARS = 512
+#: Database names are interpolated into identifiers, so they are validated
+#: strictly instead of relying on quoting alone.
+_DB_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+#: Characters that must never appear in a citation path.
+_PATH_FORBIDDEN = ("\x00", "\n", "\r", "\t")
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS {table} (
@@ -111,10 +120,52 @@ def _inline_params(sql: str, params: Sequence[Any]) -> str:
             f"SQL: {' '.join(sql.split())[:160]}"
         )
     rendered = [parts[0]]
-    for value, tail in zip(params, parts[1:]):
+    for value, tail in zip(params, parts[1:], strict=True):
         rendered.append(_sql_literal(value))
         rendered.append(tail)
     return "".join(rendered)
+
+
+def _validate_database(name: str) -> str:
+    """Reject database names that could escape the identifier quoting.
+
+    The name comes from ``SEEKDB_DATABASE`` / ``SDDCTX_*`` config and is
+    interpolated into ``CREATE DATABASE`` and the qualified table name.  A
+    backtick or SQL fragment there would be an injection surface, so only
+    ``[A-Za-z0-9_]`` names are accepted.
+    """
+
+    if not isinstance(name, str) or not _DB_NAME_RE.match(name):
+        raise StoreError(
+            f"非法 seekdb 库名 {name!r}：只允许字母/数字/下划线，且以字母或下划线开头、"
+            "长度 1..64（库名会被拼进 SQL 标识符，必须严格校验）。"
+        )
+    return name
+
+
+def _normalise_path(raw: Any) -> str:
+    """Return a POSIX-style citation path, validating length/characters.
+
+    Windows-style separators are normalisation to ``/`` so a citation is
+    always ``demo/app/service.py:12-20`` even when the chunk was produced on a
+    Windows host (or by an older ingest run).
+    """
+
+    path = str(raw if raw is not None else "").strip().replace("\\", "/")
+    if not path:
+        raise ValueError("chunk path must not be empty")
+    if len(path) > _PATH_MAX_CHARS:
+        raise ValueError(
+            f"chunk path too long ({len(path)} > {_PATH_MAX_CHARS} chars): "
+            f"{path[:80]!r}..."
+        )
+    for char in _PATH_FORBIDDEN:
+        if char in path:
+            raise ValueError(
+                f"chunk path must not contain control characters "
+                f"({char!r}); path={path[:80]!r}"
+            )
+    return path
 
 
 class MaterialStore:
@@ -139,7 +190,7 @@ class MaterialStore:
     def table(self) -> str:
         """Fully qualified table name (works in both server and embedded mode)."""
 
-        return f"`{self.config.database}`.`{_TABLE}`"
+        return f"`{_validate_database(self.config.database)}`.`{_TABLE}`"
 
     @property
     def embedded(self) -> bool:
@@ -149,6 +200,9 @@ class MaterialStore:
     def _ensure_conn(self) -> None:
         if self._conn is not None:
             return
+        # Validate before touching the driver: a bad database name must fail
+        # with an actionable message instead of a half-initialised session.
+        _validate_database(self.config.database)
         if self.embedded:
             self._open_embedded()
         else:
@@ -293,30 +347,73 @@ class MaterialStore:
             self._close_cursor(cursor)
 
     def _executemany(self, sql: str, rows: Sequence[Sequence[Any]]) -> None:
+        """Write all rows in one transaction (all-or-nothing when supported).
+
+        ``REPLACE INTO`` is not idempotent when only part of a batch is
+        written: a mid-batch failure would leave the material store in a state
+        that neither matches "before" nor "after" the re-ingest.  Both drivers
+        support explicit transactions, so the batch is wrapped in BEGIN/COMMIT
+        with ROLLBACK on error.  If a driver build rejects BEGIN, the batch
+        still runs (unchanged legacy behaviour) instead of failing outright.
+        """
+
         self._ensure_conn()
         cursor = self._cursor()
+        began = False
         try:
+            began = self._begin(cursor)
             if self.embedded:
                 # ``pylibseekdb.Cursor`` has no ``executemany``/binding; inline
                 # each row and execute one statement at a time.
                 for row in rows:
                     self._execute_on(cursor, sql, row)
-                return
-            try:
-                cursor.executemany(sql, rows)
-            except AttributeError:
-                # Very defensive: fall back to one statement at a time.
-                for row in rows:
-                    self._execute_on(cursor, sql, row)
+            else:
+                try:
+                    cursor.executemany(sql, rows)
+                except AttributeError:
+                    # Very defensive: fall back to one statement at a time.
+                    for row in rows:
+                        self._execute_on(cursor, sql, row)
+            if began:
+                self._commit(cursor)
         except StoreError:
+            if began:
+                self._rollback(cursor)
             raise
         except Exception as exc:
+            if began:
+                self._rollback(cursor)
             raise StoreError(
                 f"seekdb 批量写入失败（{self.config.describe()}）："
                 f"{type(exc).__name__}: {exc}；SQL: {' '.join(sql.split())[:160]}"
             ) from exc
         finally:
             self._close_cursor(cursor)
+
+    def _begin(self, cursor: Any) -> bool:
+        try:
+            if self.embedded:
+                cursor.execute("BEGIN")
+            else:
+                self._conn.begin()
+            return True
+        except Exception:  # pragma: no cover - driver/build dependent
+            return False
+
+    def _commit(self, cursor: Any) -> None:
+        if self.embedded:
+            cursor.execute("COMMIT")
+        else:
+            self._conn.commit()
+
+    def _rollback(self, cursor: Any) -> None:
+        try:
+            if self.embedded:
+                cursor.execute("ROLLBACK")
+            else:
+                self._conn.rollback()
+        except Exception:  # pragma: no cover - best effort
+            pass
 
     @staticmethod
     def _close_cursor(cursor: Any) -> None:
@@ -600,20 +697,32 @@ class MaterialStore:
             raise ValueError(
                 f"unknown document kind {kind!r}; expected one of {', '.join(DOC_KINDS)}"
             )
-        path = str(raw["path"] or "").strip()
-        if not path:
-            raise ValueError("chunk path must not be empty")
+        path = _normalise_path(raw["path"])
         body = raw["body"]
         if not isinstance(body, str) or not body.strip():
             raise ValueError(f"chunk body must be a non-empty string (path={path!r})")
-        line_start = int(raw["line_start"])
-        line_end = int(raw["line_end"])
+        try:
+            line_start = int(raw["line_start"])
+            line_end = int(raw["line_end"])
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"line_start/line_end must be integers (path={path!r}, got "
+                f"{raw['line_start']!r}..{raw['line_end']!r})"
+            ) from None
         if line_start < 1:
             raise ValueError(f"line_start must be 1-based (path={path!r}, got {line_start})")
         if line_end < line_start:
             raise ValueError(
                 f"line_end must be >= line_start (path={path!r}, "
                 f"{line_start}..{line_end})"
+            )
+        body_lines = len(body.splitlines())
+        expected_lines = line_end - line_start + 1
+        if body_lines != expected_lines:
+            raise ValueError(
+                f"chunk body/line range mismatch (path={path!r}): body has "
+                f"{body_lines} line(s) but line_start..line_end={line_start}..{line_end} "
+                f"implies {expected_lines}; citations would not match the source file."
             )
         return Chunk(
             kind=kind,  # type: ignore[arg-type]

@@ -54,7 +54,7 @@ def main(argv: list[str]) -> int:
     same = a.get("context_sha256") == b.get("context_sha256")
     print()
     print("context changed:", "no (identical)" if same else "yes")
-    return 0 if not same or (not added and not removed and not changed) else 0
+    return 0
 
 
 if __name__ == "__main__":

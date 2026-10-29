@@ -11,5 +11,9 @@ PYTHON=${PYTHON:-.venv/bin/python}
 if [ ! -x "$PYTHON" ]; then
   PYTHON=python3
 fi
+case "$PYTHON" in
+  /*) ;;
+  *) PYTHON="$PWD/$PYTHON" ;;
+esac
 
 "$PYTHON" -m sddctx state export --out records/powercontext/state-readback.json

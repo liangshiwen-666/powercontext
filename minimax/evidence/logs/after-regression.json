@@ -3,8 +3,8 @@
   "suite": "tests/regression",
   "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/regression -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-regression.junit.xml",
   "cwd": "/mnt/d/oceanbase/work-eco/repo/minimax/demo",
-  "started_at": "2026-10-27T14:52:42Z",
-  "duration_s": 1.815,
+  "started_at": "2026-10-29T05:36:09Z",
+  "duration_s": 1.378,
   "timed_out": false,
   "exit_code": 0,
   "counts": {
@@ -14,12 +14,33 @@
     "skipped": 0
   },
   "junit": "/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-regression.junit.xml",
+  "testcase_ids": [
+    "tests.regression.test_orders_regression::test_blank_user_header",
+    "tests.regression.test_orders_regression::test_caller_isolation",
+    "tests.regression.test_orders_regression::test_default_pagination_and_order",
+    "tests.regression.test_orders_regression::test_get_foreign_order_is_not_disclosed",
+    "tests.regression.test_orders_regression::test_get_single_order",
+    "tests.regression.test_orders_regression::test_get_unknown_order",
+    "tests.regression.test_orders_regression::test_health_endpoint",
+    "tests.regression.test_orders_regression::test_invalid_sort",
+    "tests.regression.test_orders_regression::test_item_shape",
+    "tests.regression.test_orders_regression::test_limit_lower_bound_and_type",
+    "tests.regression.test_orders_regression::test_limit_upper_bound",
+    "tests.regression.test_orders_regression::test_missing_user_header",
+    "tests.regression.test_orders_regression::test_negative_offset",
+    "tests.regression.test_orders_regression::test_pagination_beyond_end",
+    "tests.regression.test_orders_regression::test_pagination_slice",
+    "tests.regression.test_orders_regression::test_sort_amount_desc",
+    "tests.regression.test_orders_regression::test_sort_created_at_asc",
+    "tests.regression.test_orders_regression::test_unknown_query_parameters_are_ignored"
+  ],
+  "testcase_count": 18,
   "code_version": {
-    "base_git_head": "1266f14fd9de1a9b07f10dcf0f12363d3c07ce52",
-    "patch_sha256": "71de0a956ba7a67c1d9c923ff50e3081c3d4d04cbe7aa35c27ba28c63a0f1f78",
+    "base_git_head": "62ae7f1729b68f10956f26a7f851bcd99b7ee6f7",
+    "patch_sha256": "81451f043aa315103fdf00a52e33cae212493bcfe629429854f757a320d99170",
     "tree_state": "after"
   },
-  "stdout": "..................                                                       [100%]\n18 passed in 0.67s\n",
-  "stdout_sha256": "1d1dfaf9d4ceff3a2325e0e963b626653435f982ad036ea3905b847ed234fb90",
+  "stdout": "..................                                                       [100%]\n18 passed in 0.47s\n",
+  "stdout_sha256": "49675a6a8d90f5a69033379a43757eea5c03a277003a20e3d68c52ed44850995",
   "stderr": ""
 }

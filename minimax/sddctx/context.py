@@ -34,7 +34,6 @@ STOPWORDS = {
 
 MAX_SPEC_ENTRIES = 10
 MAX_CODE_ENTRIES = 10
-MAX_TEST_ENTRIES = 12
 MAX_FILES_IN_PROMPT = 6
 MAX_BODY_CHARS = 4000
 
@@ -289,10 +288,20 @@ def select_tests(store, task: dict[str, Any]) -> list[dict[str, Any]]:
 
     regression_hits = _enumerate_suite(store, kinds=["test"], path_contains="tests/regression", limit=40)
     _add(regression_hits, "regression suite (enumerated)")
+
+    # deterministic order: functional suite first, then regression, then by path/name
+    suite_order = {"target": 0, "regression": 1}
+    entries.sort(
+        key=lambda entry: (
+            suite_order.get(str(entry.get("suite")), 9),
+            str(entry.get("path") or ""),
+            str(entry.get("name") or ""),
+        )
+    )
     return entries
 
 
-def _read_state(state_store, query: str) -> dict[str, Any]:
+def _read_state(state_store, query: str, root: Path | None = None) -> dict[str, Any]:
     try:
         records = state_store.list()
         prepared = state_store.prepare(query or "补丁 测试 验证 状态")
@@ -307,6 +316,8 @@ def _read_state(state_store, query: str) -> dict[str, Any]:
             "prepared_context": "",
         }
 
+    # PowerContext returns records unordered; sort for reproducible output.
+    records = sorted(records, key=lambda item: (str(item.get("kind") or ""), str(item.get("text") or "")))
     done, todo, verification, decisions = [], [], [], []
     closed_todos: set[str] = set()
     next_action = None
@@ -326,10 +337,16 @@ def _read_state(state_store, query: str) -> dict[str, Any]:
         else:
             decisions.append(text)
     todo = [item for item in todo if item not in closed_todos]
+    db_path = str(getattr(state_store, "db_path", ""))
+    if root is not None and db_path:
+        try:
+            db_path = Path(db_path).resolve().relative_to(root.resolve()).as_posix()
+        except ValueError:
+            pass
     return {
         "available": True,
         "scope_key": getattr(state_store, "scope_key", None),
-        "db_path": str(getattr(state_store, "db_path", "")),
+        "db_path": db_path,
         "record_count": len(records),
         "done": done,
         "todo": todo,
@@ -360,7 +377,6 @@ def render_context_text(pack: dict[str, Any]) -> str:
     """Render the context pack as the text block sent to the coding assistant."""
 
     lines: list[str] = []
-    task = pack["task"]
     lines.append("=== TASK ===")
     lines.append(pack.get("task_text", "").strip())
     lines.append("")
@@ -426,7 +442,7 @@ def build_context(
     code = select_code(store, task, specs)
     tests = select_tests(store, task)
     state_query = " ".join([task["title"], *task["requirements"], "补丁 测试 状态 验证"])
-    state = _read_state(state_store, state_query)
+    state = _read_state(state_store, state_query, root)
     pack: dict[str, Any] = {
         "schema": "sddctx.context-pack/v1",
         "generated_at": _now(),

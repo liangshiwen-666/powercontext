@@ -1,3 +1,5 @@
+# Frozen on CPython 3.12 (uv pip freeze). Requires Python >= 3.12: numpy 2.5.4 declares Requires-Python >=3.12.
+# Regenerate with: uv pip freeze --python <venv>/bin/python
 aiomysql==0.3.2
 aiosqlite==0.22.1
 alembic==1.20.1

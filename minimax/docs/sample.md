@@ -53,12 +53,17 @@
 
 **代码（需要修改的文件/符号）**
 
-| 符号 | 文件 |
-|---|---|
-| `list_orders`、`_sort_orders`、`parse_pagination`、`parse_sort` | `demo/app/service.py` |
-| `list_orders_route` | `demo/app/routes.py` |
-| `ApiError`（错误信封） | `demo/app/errors.py` |
-| `Order`、`DEFAULT_LIMIT` 等模型常量 | `demo/app/models.py` |
+| 符号 | 文件 | 对应需求 |
+|---|---|---|
+| `list_orders`、`_sort_orders` | `demo/app/service.py` | REQ-ORD-001/003/006–009 |
+| `parse_status`、`parse_created_bounds`、`parse_min_amount` | `demo/app/service.py` | REQ-ORD-006/007/008 |
+| `parse_pagination`、`parse_sort`（必须保持的既有逻辑） | `demo/app/service.py` | REQ-ORD-001/003 |
+| `list_orders_route` | `demo/app/routes.py` | 接收并校验筛选参数 |
+| `ApiError`（错误信封） | `demo/app/errors.py` | REQ-ORD-005 |
+| `Order`、`DEFAULT_LIMIT` 等模型常量 | `demo/app/models.py` | 数据模型与分页常量 |
+
+> 实际选中的 10 个代码块由 seekdb 检索决定（见 `evidence/context/*.json` 的 `code[]`）；
+> 评审只需核对"规格提到的符号都出现在上下文里、citation 能打开且行号正确"。
 
 **测试**
 
@@ -77,28 +82,38 @@
 
 ## 5. 操作步骤
 
+> 提交树中的业务工程是**修改后**状态。手动重放补丁前要先回到修改前：
+> `python -m sddctx reset --demo --data`；推荐直接 `bash scripts/demo.sh`（内部已做 reset + run）。
+
 ```bash
 cd minimax
-bash scripts/setup.sh                 # 安装依赖 + 建表
+bash scripts/setup.sh                 # 安装依赖 + 建表（含 Python/seekdb 预检）
+
+# 0) 回到修改前 + 清空任务状态（手动重放时必需；demo.sh 会自动做）
+python -m sddctx reset --demo --data
 
 # 1) 导入当前生效规格（v2.0）与代码/测试
 python -m sddctx ingest
 
-# 2) 生成开发上下文（核对规格/代码/测试来源）
+# 2) 生成开发上下文（核对规格/代码/测试来源；默认输出到 .data/context/）
 python -m sddctx context --print-text
 
 # 3) 重放 MiniMax 生成的补丁（或 --live 现场生成）
 python -m sddctx patch generate
-python -m sddctx patch apply
+python -m sddctx patch apply          # 纯 Python 引擎，tool="python"
 
-# 4) 跑 before/after 测试矩阵
+# 4) 跑 before/after 测试矩阵（含 JUnit testcase 集合一致性校验）
 python -m sddctx verify
 
-# 5) 写入并读回任务状态（新进程）
+# 5) 写入/读回任务状态（新进程）
 python -m sddctx state show
+python -m sddctx state export --out records/powercontext/state-readback.json
 
-# 或一条命令完成 1-5
-python -m sddctx run
+# 或一条命令完成 0-5
+python -m sddctx run --fresh
+
+# 全量验证（推荐）
+bash scripts/verify-all.sh
 ```
 
 规格更新演示：
@@ -111,13 +126,15 @@ bash scripts/spec-update.sh
 
 | 检查点 | 预期 |
 |---|---|
-| `ingest` | 入库 chunk 数 > 40；spec/code/test 三类均非空 |
-| `context` | `specs` 含 REQ-ORD-006～009（citation 指向 `demo/specs/orders.md` 对应行）；`code` 含 `list_orders`、`list_orders_route`、`parse_pagination`；`tests` 同时包含 target 与 regression |
+| `ingest` | **修改前**（reset 后）：48 chunks（spec 9 / code 15 / test 24）；**修改后**（提交树）：53 chunks（9 / 20 / 24）。差异来自补丁新增的 5 个函数切块 |
+| `context` | `specs` 含 REQ-ORD-006～009（citation 指向 `demo/specs/orders.md` 对应行）；`code` 含 `list_orders`、`list_orders_route`、`parse_status`、`parse_created_bounds`、`parse_min_amount`、`parse_pagination`；`tests` 同时包含 target 6 条与 regression 18 条 |
 | `verify` before | `target` 退出码 ≠ 0 且 **6 failed**（功能失败，不是环境失败）；`regression` 18 passed |
 | `verify` after | `target` 6 passed；`regression` 18 passed |
-| `verify` 结论 | `evidence/verification.json` 中 6 项检查全部 `ok: true` |
-| `state show`（新进程） | 能读到上文写入的 done/todo/verification/next_action 记录 |
+| `verify` 结论 | `evidence/verification.json` 中 6 项检查全部 `ok: true`，且 before/after 的 JUnit testcase 集合完全一致（detail 里显示 "6 identical testcases"） |
+| `state show` / `state export`（新进程） | 执行 `run` 后应读到 **10 条**记录（decision/done/todo/todo_done/verification/next_step）且 `prepared.status=ready`；`records/powercontext/state-readback.json` 与新进程输出一致 |
 | `spec-update.sh` | 上下文 A（v1.0）缺 REQ-ORD-006～009；上下文 B（v2.0）包含它们，`context_sha256` 不同 |
+| 单元测试 | `python -m pytest tests -q` → 141 passed / 2 skipped（V1 实测） |
+| 测试隔离 | 两个 pytest 进程同时跑 store/ingest 测试互不影响（每进程独立测试库，V1 实测） |
 
 ## 7. 重置方法
 

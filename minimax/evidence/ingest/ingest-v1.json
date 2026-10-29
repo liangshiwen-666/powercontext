@@ -1,0 +1,14 @@
+{
+  "chunks": 49,
+  "counts": {
+    "spec": 5,
+    "code": 20,
+    "test": 24
+  },
+  "archive": "/mnt/d/oceanbase/work-eco/repo/minimax/.data/ingest/ingest-20261029T053631207969Z.jsonl",
+  "store_stats": {
+    "spec": 5,
+    "code": 20,
+    "test": 24
+  }
+}

@@ -17,17 +17,23 @@ PYTHON=${PYTHON:-.venv/bin/python}
 if [ ! -x "$PYTHON" ]; then
   PYTHON=python3
 fi
+# Absolute path: verify.py runs pytest with cwd=<temporary tree>, so a relative
+# interpreter path would break there (see docs/audit-v1.md, P0-1).
+case "$PYTHON" in
+  /*) ;;
+  *) PYTHON="$PWD/$PYTHON" ;;
+esac
 export SDDCTX_PYTHON="$PYTHON"
 
 banner() { printf '\n\033[1m== %s ==\033[0m\n' "$*"; }
 
-banner "1/6 initialise seekdb schema"
+banner "1/7 initialise seekdb schema"
 "$PYTHON" -m sddctx init
 
-banner "2/6 restore a clean starting point (pre-change code, empty task state)"
+banner "2/7 restore a clean starting point (pre-change code, empty task state)"
 "$PYTHON" -m sddctx reset --demo --data
 
-banner "3/6 full pipeline (ingest -> context -> patch replay -> verify -> state)"
+banner "3/7 full pipeline (ingest -> context -> patch replay -> verify -> state)"
 "$PYTHON" -m sddctx run --fresh
 
 banner "4/7 task state read back after the module process restarted"

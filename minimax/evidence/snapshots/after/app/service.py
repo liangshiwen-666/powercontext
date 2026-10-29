@@ -2,20 +2,19 @@
 
 Implemented requirements (see ``specs/orders.md``):
 
-* REQ-ORD-001 list pagination
-* REQ-ORD-002 caller isolation
-* REQ-ORD-003 sorting
-* REQ-ORD-004 single order lookup
-* REQ-ORD-005 error envelope
-* REQ-ORD-006 status filtering
-* REQ-ORD-007 creation-time range filtering
-* REQ-ORD-008 minimum-amount filtering
-* REQ-ORD-009 composable filters
+* REQ-ORD-001  list pagination
+* REQ-ORD-002  caller isolation
+* REQ-ORD-003  sorting
+* REQ-ORD-004  single order lookup
+* REQ-ORD-006  status filtering
+* REQ-ORD-007  creation-time range filtering
+* REQ-ORD-008  minimum-amount filtering
+* REQ-ORD-009  composable filters
 """
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 
 from .errors import ApiError
@@ -27,12 +26,7 @@ def require_user(x_user_id: str | None) -> str:
     """REQ-ORD-002: every request must identify the caller."""
 
     if x_user_id is None or not x_user_id.strip():
-        raise ApiError(
-            401,
-            "UNAUTHENTICATED",
-            "X-User-Id header is required",
-            field="X-User-Id",
-        )
+        raise ApiError(401, "UNAUTHENTICATED", "X-User-Id header is required", field="X-User-Id")
     return x_user_id.strip()
 
 
@@ -50,10 +44,7 @@ def _parse_int(raw: str | None, *, default: int, field: str) -> int:
         ) from None
 
 
-def parse_pagination(
-    limit_raw: str | None,
-    offset_raw: str | None,
-) -> tuple[int, int]:
+def parse_pagination(limit_raw: str | None, offset_raw: str | None) -> tuple[int, int]:
     """REQ-ORD-001: limit defaults to 20 and must stay in 1..100; offset >= 0."""
 
     limit = _parse_int(limit_raw, default=DEFAULT_LIMIT, field="limit")
@@ -66,12 +57,7 @@ def parse_pagination(
             field="limit",
         )
     if offset < 0:
-        raise ApiError(
-            400,
-            "INVALID_PAGINATION",
-            "offset must be greater than or equal to 0",
-            field="offset",
-        )
+        raise ApiError(400, "INVALID_PAGINATION", "offset must be greater than or equal to 0", field="offset")
     return limit, offset
 
 
@@ -91,68 +77,68 @@ def parse_sort(sort_raw: str | None) -> str:
 
 
 def parse_status(status_raw: str | None) -> str | None:
-    """REQ-ORD-006: optionally restrict orders to one documented status."""
+    """REQ-ORD-006: validate and normalize an optional status filter."""
 
     if status_raw is None:
         return None
-    if status_raw not in ORDER_STATUSES:
+
+    status = status_raw.lower()
+    if status not in ORDER_STATUSES:
         raise ApiError(
             400,
             "INVALID_FILTER",
             f"status must be one of {', '.join(ORDER_STATUSES)}",
             field="status",
         )
-    return status_raw
+    return status
 
 
 def _parse_created_bound(raw: str | None, *, field: str) -> datetime | None:
+    """Parse an ISO-8601 date or timezone-aware datetime as a UTC datetime."""
+
     if raw is None:
         return None
-
-    try:
-        parsed_date = date.fromisoformat(raw)
-    except (TypeError, ValueError):
-        parsed_date = None
-
-    if parsed_date is not None:
-        return datetime.combine(parsed_date, time.min, tzinfo=timezone.utc)
-
-    try:
-        normalized = raw[:-1] + "+00:00" if raw.endswith("Z") else raw
-        parsed_datetime = datetime.fromisoformat(normalized)
-    except (TypeError, ValueError):
+    if raw == "":
         raise ApiError(
             400,
             "INVALID_FILTER",
-            f"{field} must be an ISO-8601 date or timezone-aware datetime",
-            field=field,
-        ) from None
-
-    if parsed_datetime.tzinfo is None or parsed_datetime.utcoffset() is None:
-        raise ApiError(
-            400,
-            "INVALID_FILTER",
-            f"{field} must be an ISO-8601 date or timezone-aware datetime",
+            f"{field} must be a valid ISO-8601 date or timezone-aware datetime",
             field=field,
         )
 
-    return parsed_datetime.astimezone(timezone.utc)
+    try:
+        if len(raw) == 10:
+            parsed_date = date.fromisoformat(raw)
+            return datetime(parsed_date.year, parsed_date.month, parsed_date.day, tzinfo=timezone.utc)
+
+        normalized = raw[:-1] + "+00:00" if raw.endswith(("Z", "z")) else raw
+        parsed = datetime.fromisoformat(normalized)
+    except (TypeError, ValueError):
+        raise ApiError(
+            400,
+            "INVALID_FILTER",
+            f"{field} must be a valid ISO-8601 date or timezone-aware datetime",
+            field=field,
+        ) from None
+
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ApiError(
+            400,
+            "INVALID_FILTER",
+            f"{field} must include a timezone",
+            field=field,
+        )
+    return parsed.astimezone(timezone.utc)
 
 
 def parse_created_bounds(
     created_after_raw: str | None,
     created_before_raw: str | None,
 ) -> tuple[datetime | None, datetime | None]:
-    """REQ-ORD-007: parse inclusive lower and upper creation-time bounds."""
+    """REQ-ORD-007: parse inclusive creation-time bounds."""
 
-    created_after = _parse_created_bound(
-        created_after_raw,
-        field="created_after",
-    )
-    created_before = _parse_created_bound(
-        created_before_raw,
-        field="created_before",
-    )
+    created_after = _parse_created_bound(created_after_raw, field="created_after")
+    created_before = _parse_created_bound(created_before_raw, field="created_before")
 
     if (
         created_after is not None
@@ -170,13 +156,13 @@ def parse_created_bounds(
 
 
 def parse_min_amount(min_amount_raw: str | None) -> Decimal | None:
-    """REQ-ORD-008: parse an optional non-negative decimal lower bound."""
+    """REQ-ORD-008: parse an optional non-negative decimal amount."""
 
     if min_amount_raw is None:
         return None
 
     try:
-        min_amount = Decimal(min_amount_raw)
+        amount = Decimal(min_amount_raw)
     except (InvalidOperation, TypeError, ValueError):
         raise ApiError(
             400,
@@ -185,15 +171,39 @@ def parse_min_amount(min_amount_raw: str | None) -> Decimal | None:
             field="min_amount",
         ) from None
 
-    if not min_amount.is_finite() or min_amount < 0:
+    if not amount.is_finite() or amount < 0:
         raise ApiError(
             400,
             "INVALID_FILTER",
             "min_amount must be a non-negative decimal number",
             field="min_amount",
         )
+    return amount
 
-    return min_amount
+
+def _filter_orders(
+    orders: list[Order],
+    *,
+    status: str | None,
+    created_after: datetime | None,
+    created_before: datetime | None,
+    min_amount: Decimal | None,
+) -> list[Order]:
+    filtered = orders
+
+    if status is not None:
+        filtered = [order for order in filtered if order.status == status]
+
+    if created_after is not None:
+        filtered = [order for order in filtered if order.created_at >= created_after]
+
+    if created_before is not None:
+        filtered = [order for order in filtered if order.created_at <= created_before]
+
+    if min_amount is not None:
+        filtered = [order for order in filtered if order.amount >= min_amount]
+
+    return filtered
 
 
 def _sort_orders(orders: list[Order], sort: str) -> list[Order]:
@@ -202,12 +212,6 @@ def _sort_orders(orders: list[Order], sort: str) -> list[Order]:
     if sort == "amount_desc":
         return sorted(orders, key=lambda order: order.amount, reverse=True)
     return sorted(orders, key=lambda order: order.created_at, reverse=True)
-
-
-def _normalize_created_at(created_at: datetime) -> datetime:
-    if created_at.tzinfo is None or created_at.utcoffset() is None:
-        return created_at.replace(tzinfo=timezone.utc)
-    return created_at.astimezone(timezone.utc)
 
 
 def list_orders(
@@ -222,31 +226,19 @@ def list_orders(
     created_before: datetime | None = None,
     min_amount: Decimal | None = None,
 ) -> dict[str, object]:
-    """Return one filtered, sorted page of the caller's orders."""
+    """Return one filtered page of the caller's orders."""
 
     orders = repo.list_for_user(user_id)
-
-    if status is not None:
-        orders = [order for order in orders if order.status == status]
-
-    if created_after is not None or created_before is not None:
-        filtered_orders: list[Order] = []
-        for order in orders:
-            created_at = _normalize_created_at(order.created_at)
-            if created_after is not None and created_at < created_after:
-                continue
-            if created_before is not None and created_at > created_before:
-                continue
-            filtered_orders.append(order)
-        orders = filtered_orders
-
-    if min_amount is not None:
-        orders = [order for order in orders if order.amount >= min_amount]
-
+    orders = _filter_orders(
+        orders,
+        status=status,
+        created_after=created_after,
+        created_before=created_before,
+        min_amount=min_amount,
+    )
     orders = _sort_orders(orders, sort)
     total = len(orders)
     page = orders[offset : offset + limit]
-
     return {
         "items": [order.to_dict() for order in page],
         "total": total,
@@ -255,19 +247,10 @@ def list_orders(
     }
 
 
-def get_order(
-    repo: OrderRepository,
-    user_id: str,
-    order_id: str,
-) -> dict[str, str]:
+def get_order(repo: OrderRepository, user_id: str, order_id: str) -> dict[str, str]:
     """REQ-ORD-004: unknown or foreign orders are a plain 404."""
 
     order = repo.get_for_user(user_id, order_id)
     if order is None:
-        raise ApiError(
-            404,
-            "ORDER_NOT_FOUND",
-            f"order {order_id} was not found",
-            field="order_id",
-        )
+        raise ApiError(404, "ORDER_NOT_FOUND", f"order {order_id} was not found", field="order_id")
     return order.to_dict()

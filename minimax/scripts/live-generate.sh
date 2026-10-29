@@ -6,8 +6,8 @@
 #
 # Steps:
 #   1. restore the business project to the pre-change state
-#   2. build the context pack and ask MiniMax for a unified diff
-#      (git apply / test failures are fed back to the model, up to N attempts)
+#   2. build the context pack and ask MiniMax for the modified files
+#      (validation / test failures are fed back to the model, up to N attempts)
 #   3. run the before/after test matrix and persist task state in PowerContext
 #   4. print the resulting records and evidence paths
 set -euo pipefail
@@ -17,6 +17,10 @@ PYTHON=${PYTHON:-.venv/bin/python}
 if [ ! -x "$PYTHON" ]; then
   PYTHON=python3
 fi
+case "$PYTHON" in
+  /*) ;;
+  *) PYTHON="$PWD/$PYTHON" ;;
+esac
 export SDDCTX_PYTHON="$PYTHON"
 
 if [ -z "${MINIMAX_API_KEY:-}" ]; then
@@ -26,7 +30,7 @@ if [ -z "${MINIMAX_API_KEY:-}" ]; then
   exit 2
 fi
 
-ATTEMPTS=${ATTEMPTS:-3}
+ATTEMPTS=${ATTEMPTS:-5}
 
 echo "== 1/3 restore the pre-change business project =="
 "$PYTHON" -m sddctx reset --demo || true

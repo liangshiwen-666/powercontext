@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="6" time="0.517" timestamp="2026-10-27T22:52:38.979272+08:00" hostname="liangshuo"><testcase classname="tests.target.test_orders_filters_target" name="test_filter_by_status" time="0.018"><failure message="assert 7 == 3">tests/target/test_orders_filters_target.py:17: in test_filter_by_status
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="6" time="0.407" timestamp="2026-10-29T13:36:06.058578+08:00" hostname="liangshuo"><testcase classname="tests.target.test_orders_filters_target" name="test_filter_by_status" time="0.015"><failure message="assert 7 == 3">tests/target/test_orders_filters_target.py:17: in test_filter_by_status
     assert body["total"] == 3
-E   assert 7 == 3</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_filter_by_created_range_inclusive" time="0.007"><failure message="assert 7 == 4">tests/target/test_orders_filters_target.py:27: in test_filter_by_created_range_inclusive
+E   assert 7 == 3</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_filter_by_created_range_inclusive" time="0.006"><failure message="assert 7 == 4">tests/target/test_orders_filters_target.py:27: in test_filter_by_created_range_inclusive
     assert body["total"] == 4
 E   assert 7 == 4</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_filter_by_min_amount_inclusive" time="0.006"><failure message="assert 7 == 3">tests/target/test_orders_filters_target.py:35: in test_filter_by_min_amount_inclusive
     assert body["total"] == 3
@@ -10,7 +10,7 @@ E   assert 7 == 2</failure></testcase><testcase classname="tests.target.test_ord
     assert resp.status_code == 400, params
 E   AssertionError: {'status': 'bogus'}
 E   assert 200 == 400
-E    +  where 200 = &lt;Response [200 OK]&gt;.status_code</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_invalid_created_range" time="0.006"><failure message="AssertionError: {'created_after': 'not-a-date'}&#10;assert 200 == 400&#10; +  where 200 = &lt;Response [200 OK]&gt;.status_code">tests/target/test_orders_filters_target.py:72: in test_invalid_created_range
+E    +  where 200 = &lt;Response [200 OK]&gt;.status_code</failure></testcase><testcase classname="tests.target.test_orders_filters_target" name="test_invalid_created_range" time="0.005"><failure message="AssertionError: {'created_after': 'not-a-date'}&#10;assert 200 == 400&#10; +  where 200 = &lt;Response [200 OK]&gt;.status_code">tests/target/test_orders_filters_target.py:72: in test_invalid_created_range
     assert resp.status_code == 400, params
 E   AssertionError: {'created_after': 'not-a-date'}
 E   assert 200 == 400

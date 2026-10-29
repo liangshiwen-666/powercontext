@@ -14,7 +14,9 @@ Design goals
 
 The public surface is intentionally small because other toolkit modules
 (CLI, patch workflow) only need :class:`MiniMaxClient` and
-:func:`build_patch_messages`.
+:func:`build_edit_messages` (whole-file edits).  :func:`build_patch_messages`
+is deprecated — it is kept as an import-compatible alias for
+``sddctx/cli.py`` and slated for removal in the next interface revision.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ import hashlib
 import json
 import re
 import time
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -68,6 +71,7 @@ class MiniMaxError(RuntimeError):
         retryable: bool = False,
         response_body: Any = None,
         record_path: str | None = None,
+        base_status_code: int | None = None,
     ) -> None:
         super().__init__(message)
         self.http_status = http_status
@@ -76,6 +80,7 @@ class MiniMaxError(RuntimeError):
         self.retryable = retryable
         self.response_body = response_body
         self.record_path = record_path
+        self.base_status_code = base_status_code
 
 
 class MiniMaxNotConfigured(MiniMaxError):
@@ -153,10 +158,15 @@ def _error_from_body(body: Mapping[str, Any] | None) -> tuple[str | None, str | 
     base_resp = body.get("base_resp")
     if isinstance(base_resp, Mapping):
         code = base_resp.get("status_code")
-        if code not in (None, 0):
-            base_code = int(code)
-            if message is None:
-                message = f"base_resp.status_code={base_code}: {base_resp.get('status_msg', '')}"
+        if code is not None:
+            try:
+                parsed = int(code)
+            except (TypeError, ValueError):
+                parsed = 0
+            if parsed != 0:
+                base_code = parsed
+                if message is None:
+                    message = f"base_resp.status_code={base_code}: {base_resp.get('status_msg', '')}"
     return error_type, message, base_code
 
 
@@ -261,21 +271,19 @@ def build_patch_messages(
     context_text: str,
     context_meta: Mapping[str, Any] | Sequence[Any] | None = None,
 ) -> list[dict[str, str]]:
-    """Build the ``messages`` payload for one patch-generation call.
+    """Deprecated: build messages that ask the model for a unified diff.
 
-    Parameters
-    ----------
-    task_text:
-        The engineering task / acceptance criteria (from ``demo/tasks/*.md``).
-    context_text:
-        The assembled context pack (already includes file excerpts + citations).
-    context_meta:
-        Optional citation metadata: a list of hits, a single hit dict, a
-        ``{"hits": [...]}`` mapping or a mapping of ``path -> meta``.  Each hit
-        can carry ``path``, ``line_start``, ``line_end``, ``symbol``, ``title``,
-        ``kind`` or an explicit ``citation`` string.
+    The live pipeline now uses :func:`build_edit_messages` (whole-file edits),
+    which parses more reliably than byte-exact unified diffs.  This function is
+    kept only because ``sddctx/cli.py`` still imports the name (it is no longer
+    called there); it will be removed together with that import.
     """
 
+    warnings.warn(
+        "build_patch_messages() is deprecated; use build_edit_messages() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     citations = _format_citations(context_meta)
     citation_block = "\n".join(citations) if citations else "- (context pack 未附带 citation 元数据)"
     user_prompt = f"""TASK
@@ -526,6 +534,7 @@ class MiniMaxClient:
                     trace_id=trace_id,
                     retryable=retryable,
                     response_body=body,
+                    base_status_code=base_code,
                 )
                 attempts.append(
                     {
@@ -617,7 +626,7 @@ class MiniMaxClient:
     def _parse_body(response: requests.Response) -> dict[str, Any]:
         try:
             body = response.json()
-        except Exception:  # noqa: BLE001 - non JSON gateway page
+        except Exception:
             return {"_non_json": _truncate(getattr(response, "text", ""), 4000)}
         return body if isinstance(body, dict) else {"_body": body}
 
@@ -636,8 +645,8 @@ class MiniMaxClient:
             return None
         prev = None
         try:
-            for line in index.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
+            for raw_line in index.read_text(encoding="utf-8").splitlines():
+                line = raw_line.strip()
                 if not line:
                     continue
                 try:
@@ -649,6 +658,28 @@ class MiniMaxClient:
         except OSError:
             return None
         return prev
+
+    def _minimax_root(self) -> Path:
+        """Resolve the ``minimax/`` project root for portable record paths.
+
+        The toolkit layout is ``<minimax>/records/minimax``; anything else
+        (mainly tests using a bare temp dir) falls back to the record dir's
+        parent so index paths are still relative, never absolute.
+        """
+
+        record_dir = self._record_dir.resolve()
+        if record_dir.name == "minimax" and record_dir.parent.name == "records":
+            return record_dir.parent.parent
+        return record_dir.parent
+
+    def _portable_record_path(self, record_path: Path) -> str:
+        """Return the record path relative to the minimax root (POSIX style)."""
+
+        try:
+            return record_path.resolve().relative_to(self._minimax_root()).as_posix()
+        except ValueError:
+            # Never leak an absolute path into the portable index.
+            return record_path.name
 
     def _write_record(
         self,
@@ -723,6 +754,7 @@ class MiniMaxClient:
             else {
                 "message": str(error),
                 "http_status": error.http_status,
+                "base_status_code": error.base_status_code,
                 "retryable": error.retryable,
             },
             "meta": _json_safe(meta) if meta else {},
@@ -747,7 +779,7 @@ class MiniMaxClient:
             "schema": INDEX_SCHEMA,
             "finished_at_utc": record["finished_at_utc"],
             "tag": record["tag"],
-            "record_path": str(record_path),
+            "record_path": self._portable_record_path(record_path),
             "record_sha256": record_sha256,
             "prev_record_sha256": prev,
             "model": self._model,
@@ -773,9 +805,11 @@ class MiniMaxClient:
 
 
 __all__ = [
+    "RECORD_SCHEMA",
     "MiniMaxClient",
     "MiniMaxError",
     "MiniMaxNotConfigured",
-    "build_patch_messages",
-    "RECORD_SCHEMA",
+    "build_edit_messages",
+    "build_patch_messages",  # deprecated, kept for sddctx/cli.py import compatibility
+    "extract_file_writes",
 ]

@@ -25,19 +25,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from . import __version__
 from . import verify as verifymod
 from .config import ToolkitConfig
 from .context import build_context
 from .ingest import ingest as ingest_materials
-from .minimax_client import (
-    MiniMaxClient,
-    build_edit_messages,
-    build_patch_messages,
-    extract_file_writes,
-)
+from .minimax_client import MiniMaxClient, build_edit_messages, extract_file_writes
 from .patch import apply_patch, extract_unified_diff, reverse_patch
 from .pcstore import TaskStateStore
-from .store import MaterialStore
+from .store import MaterialStore, StoreError
 
 DEFAULT_SCOPE_KEY = "sddctx-orders-filters-v1"
 DEFAULT_PATCH_NAME = "0001-orders-filters.patch"
@@ -88,8 +84,17 @@ def _rel(cfg: ToolkitConfig, value: Any) -> str:
         return ""
     try:
         return cfg.relpath(Path(str(value)))
-    except Exception:  # noqa: BLE001 - evidence rendering must never fail
+    except Exception:  # evidence rendering must never fail
         return str(value)
+
+
+def _sorted_records(records: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    """PowerContext returns records unordered; sort them for reproducible evidence."""
+
+    return sorted(
+        records,
+        key=lambda item: (str(item.get("kind") or ""), str(item.get("text") or "")),
+    )
 
 
 def _save_json(path: Path, payload: Any) -> Path:
@@ -114,47 +119,94 @@ def _collect_db_evidence(cfg: ToolkitConfig, label: str) -> Path:
 
     db = cfg.seekdb
     queries: list[dict[str, Any]] = []
+    statements = [
+        ("schema", "SHOW CREATE TABLE ctx_doc"),
+        ("counts_by_kind", "SELECT kind, COUNT(*) AS chunks FROM ctx_doc GROUP BY kind ORDER BY kind"),
+        (
+            "retrieval_specs",
+            "SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
+            "ROUND(MATCH(body) AGAINST('REQ-ORD-006 筛选 状态'), 4) AS score "
+            "FROM ctx_doc WHERE MATCH(body) AGAINST('REQ-ORD-006 筛选 状态') AND kind IN ('spec') "
+            "ORDER BY score DESC LIMIT 10",
+        ),
+        (
+            "retrieval_code",
+            "SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
+            "ROUND(MATCH(body) AGAINST('status created_after min_amount 筛选 校验 参数'), 4) AS score "
+            "FROM ctx_doc WHERE MATCH(body) AGAINST('status created_after min_amount 筛选 校验 参数') "
+            "AND kind = 'code' ORDER BY score DESC LIMIT 5",
+        ),
+        (
+            "retrieval_tests",
+            "SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
+            "ROUND(MATCH(body) AGAINST('筛选 状态 时间范围 金额下限 INVALID_FILTER 测试'), 4) AS score "
+            "FROM ctx_doc WHERE MATCH(body) AGAINST('筛选 状态 时间范围 金额下限 INVALID_FILTER 测试') "
+            "AND kind = 'test' ORDER BY score DESC LIMIT 5",
+        ),
+        (
+            # one statement that returns spec + code + test rows (per-kind quota)
+            "retrieval_all_kinds",
+            "SELECT kind, citation, score FROM ("
+            "  (SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
+            "     ROUND(MATCH(body) AGAINST('筛选 状态 时间范围 金额下限'), 4) AS score "
+            "   FROM ctx_doc WHERE MATCH(body) AGAINST('筛选 状态 时间范围 金额下限') "
+            "   AND kind = 'spec' ORDER BY score DESC LIMIT 2) "
+            "  UNION ALL "
+            "  (SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
+            "     ROUND(MATCH(body) AGAINST('筛选 状态 时间范围 金额下限'), 4) AS score "
+            "   FROM ctx_doc WHERE MATCH(body) AGAINST('筛选 状态 时间范围 金额下限') "
+            "   AND kind = 'code' ORDER BY score DESC LIMIT 2) "
+            "  UNION ALL "
+            "  (SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
+            "     ROUND(MATCH(body) AGAINST('筛选 状态 时间范围 金额下限'), 4) AS score "
+            "   FROM ctx_doc WHERE MATCH(body) AGAINST('筛选 状态 时间范围 金额下限') "
+            "   AND kind = 'test' ORDER BY score DESC LIMIT 2) "
+            ") AS merged ORDER BY kind, score DESC",
+        ),
+    ]
 
-    def _run(name: str, sql: str) -> None:
-        try:
-            conn = pymysql.connect(
-                host=db.host, port=db.port, user=db.user, password=db.password,
-                database=db.database, charset="utf8mb4", connect_timeout=10,
-            )
-        except Exception as exc:  # noqa: BLE001
-            queries.append({"name": name, "sql": sql, "error": f"{type(exc).__name__}: {exc}"})
-            return
-        try:
-            with conn.cursor() as cur:
-                cur.execute(sql)
-                rows = cur.fetchall() if cur.description else []
-                columns = [col[0] for col in cur.description] if cur.description else []
-            queries.append({"name": name, "sql": sql, "columns": columns,
-                            "rows": [list(row) for row in rows], "row_count": len(rows)})
-        except Exception as exc:  # noqa: BLE001
-            queries.append({"name": name, "sql": sql, "error": f"{type(exc).__name__}: {exc}"})
-        finally:
-            conn.close()
+    connection = None
+    connection_error: str | None = None
+    try:
+        connection = pymysql.connect(
+            host=db.host,
+            port=db.port,
+            user=db.user,
+            password=db.password,
+            database=db.database,
+            charset="utf8mb4",
+            connect_timeout=10,
+        )
+    except Exception as exc:  # recorded as evidence; the command reports the failure
+        connection_error = f"{type(exc).__name__}: {exc}"
 
-    _run("schema", "SHOW CREATE TABLE ctx_doc")
-    _run("counts_by_kind", "SELECT kind, COUNT(*) AS chunks FROM ctx_doc GROUP BY kind ORDER BY kind")
-    _run(
-        "retrieval_specs",
-        "SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
-        "ROUND(MATCH(body) AGAINST('REQ-ORD-006 筛选 状态'), 4) AS score "
-        "FROM ctx_doc WHERE MATCH(body) AGAINST('REQ-ORD-006 筛选 状态') AND kind IN ('spec') "
-        "ORDER BY score DESC LIMIT 10",
-    )
-    _run(
-        "retrieval_all_kinds",
-        "SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
-        "ROUND(MATCH(body) AGAINST('筛选 状态 时间范围 金额下限'), 4) AS score "
-        "FROM ctx_doc WHERE MATCH(body) AGAINST('筛选 状态 时间范围 金额下限') "
-        "AND kind IN ('spec','code','test') ORDER BY score DESC LIMIT 10",
-    )
+    try:
+        for name, sql in statements:
+            if connection is None:
+                queries.append({"name": name, "sql": sql, "error": connection_error})
+                continue
+            try:
+                with connection.cursor() as cur:
+                    cur.execute(sql)
+                    rows = cur.fetchall() if cur.description else []
+                    columns = [col[0] for col in cur.description] if cur.description else []
+                queries.append(
+                    {
+                        "name": name,
+                        "sql": sql,
+                        "columns": columns,
+                        "rows": [list(row) for row in rows],
+                        "row_count": len(rows),
+                    }
+                )
+            except Exception as exc:  # recorded as evidence
+                queries.append({"name": name, "sql": sql, "error": f"{type(exc).__name__}: {exc}"})
+    finally:
+        if connection is not None:
+            connection.close()
 
     payload = {
-        "schema": "sddctx.sendb-evidence/v1",
+        "schema": "sddctx.seekdb-evidence/v1",
         "generated_at": _stamp(),
         "connection": {"host": db.host, "port": db.port, "database": db.database, "table": "ctx_doc"},
         "engine": "seekdb 1.4.0 (MySQL protocol)",
@@ -168,9 +220,9 @@ def _export_state_evidence(cfg: ToolkitConfig, state: TaskStateStore, label: str
     payload = {
         "schema": "sddctx.powercontext-evidence/v1",
         "generated_at": _stamp(),
-        "db_path": str(cfg.pc_db_path),
+        "db_path": _rel(cfg, cfg.pc_db_path),
         "scope_key": getattr(state, "scope_key", None),
-        "records": state.list(),
+        "records": _sorted_records(state.list()),
         "prepared": state.prepare("补丁 测试 验证 状态"),
     }
     out = cfg.records_dir / "powercontext" / f"state-{label}-{_stamp()}.json"
@@ -182,11 +234,20 @@ def cmd_db_evidence(args: argparse.Namespace) -> int:
     out = _collect_db_evidence(cfg, "manual")
     payload = json.loads(out.read_text(encoding="utf-8"))
     print(f"seekdb evidence : {out}")
+    failures = 0
     for query in payload["queries"]:
         status = "ERROR" if query.get("error") else f"{query.get('row_count', 0)} rows"
         print(f"  {query['name']:<20} {status}")
         if query.get("error"):
+            failures += 1
             print(f"    {query['error']}")
+    if failures:
+        print(
+            f"error: {failures}/{len(payload['queries'])} seekdb queries failed "
+            "(check SEEKDB_HOST/PORT and that `sddctx ingest` has run)",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 
@@ -218,9 +279,12 @@ def _git_head(path: Path) -> str | None:
     try:
         proc = subprocess.run(
             ["git", "-C", str(path), "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
     if proc.returncode != 0:
         return None
@@ -279,12 +343,14 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     store = _store(cfg)
     specs = Path(args.specs).resolve() if args.specs else None
     result = ingest_materials(store, cfg.demo_root, specs=specs, archive_dir=cfg.data_dir / "ingest")
-    print(f"chunks ingested : {result['chunks']}")
-    print(f"counts          : {json.dumps(result['counts'], ensure_ascii=False)}")
-    print(f"archive         : {result['archive']}")
-    print(f"store stats     : {json.dumps(store.stats(), ensure_ascii=False)}")
     if args.json:
-        _print_json(result)
+        # machine-readable mode: stdout stays a single valid JSON document
+        _print_json({**result, "store_stats": store.stats()})
+    else:
+        print(f"chunks ingested : {result['chunks']}")
+        print(f"counts          : {json.dumps(result['counts'], ensure_ascii=False)}")
+        print(f"archive         : {result['archive']}")
+        print(f"store stats     : {json.dumps(store.stats(), ensure_ascii=False)}")
     store.close()
     return 0
 
@@ -301,7 +367,16 @@ def cmd_context(args: argparse.Namespace) -> int:
             out = cfg.root / out
         _save_json(out, pack)
     else:
-        out = _save_context(cfg, pack, pack["task"]["id"])
+        # default location is runtime data, not evidence: only the pipeline
+        # (`sddctx run`) writes auditable packs into evidence/context/
+        out = cfg.data_dir / "context" / f"{pack['task']['id']}-{_stamp()}.json"
+        _save_json(out, pack)
+    if not (pack["specs"] or pack["code"] or pack["tests"]):
+        print(
+            "warning: the context pack is empty — run `python -m sddctx ingest` first "
+            "and check SEEKDB_HOST/SEEKDB_PORT",
+            file=sys.stderr,
+        )
     print(f"task            : {pack['task']['id']}  requirements={pack['task']['requirements']}")
     print(f"specs           : {len(pack['specs'])} entries (missing={pack['specs_missing']})")
     print(f"code            : {len(pack['code'])} entries; files={list(pack['file_contents'])}")
@@ -325,16 +400,25 @@ def cmd_context(args: argparse.Namespace) -> int:
 def cmd_state_show(args: argparse.Namespace) -> int:
     cfg = _cfg()
     state = _state(cfg, args.scope_key)
+    records = _sorted_records(state.list())
+    prepared = state.prepare("补丁 测试 验证 状态")
+    if args.json:
+        # machine-readable mode: stdout stays a single valid JSON document
+        _print_json(
+            {
+                "db_path": _rel(cfg, cfg.pc_db_path),
+                "scope_key": args.scope_key or DEFAULT_SCOPE_KEY,
+                "records": records,
+                "prepared": prepared,
+            }
+        )
+        return 0
     print(f"powercontext db  : {cfg.pc_db_path}")
     print(f"scope key        : {args.scope_key or DEFAULT_SCOPE_KEY}")
-    records = state.list()
     print(f"records          : {len(records)}")
     for record in records:
         print(f"  [{record.get('kind')}] {record.get('text')}")
-    prepared = state.prepare("补丁 测试 验证 状态")
     print(f"prepared context : status={prepared.get('status')} bytes={prepared.get('bytes')}")
-    if args.json:
-        _print_json({"records": records, "prepared": prepared})
     return 0
 
 
@@ -351,7 +435,7 @@ def cmd_state_export(args: argparse.Namespace) -> int:
         "db_path": _rel(cfg, cfg.pc_db_path),
         "scope_key": args.scope_key or DEFAULT_SCOPE_KEY,
         "process": {"pid": os.getpid(), "python": sys.executable},
-        "records": state.list(),
+        "records": _sorted_records(state.list()),
         "prepared": state.prepare("补丁 测试 验证 状态"),
     }
     out = Path(args.out) if args.out else (cfg.records_dir / "powercontext" / f"state-readback-{_stamp()}.json")
@@ -380,9 +464,11 @@ def cmd_state_save(args: argparse.Namespace) -> int:
     if not entries:
         raise SystemExit("nothing to save: pass --entry kind:text (repeatable) or --entries-json FILE")
     saved = state.save(entries)
-    print(f"saved {len(saved)} records to {cfg.pc_db_path}")
     if args.json:
-        _print_json(saved)
+        # machine-readable mode: stdout stays a single valid JSON document
+        _print_json({"db_path": _rel(cfg, cfg.pc_db_path), "saved": saved})
+        return 0
+    print(f"saved {len(saved)} records to {cfg.pc_db_path}")
     return 0
 
 
@@ -519,16 +605,18 @@ def cmd_verify(args: argparse.Namespace) -> int:
     }
     out = _save_json(cfg.evidence_dir / "verification.json", summary)
 
-    print(f"patch           : {patch_path}  sha256={summary['patch']['sha256'][:16]}…")
-    print(f"before target   : exit={before['target']['exit_code']} counts={before['target']['counts']}")
-    print(f"before regression: exit={before['regression']['exit_code']} counts={before['regression']['counts']}")
-    print(f"after target    : exit={after['target']['exit_code']} counts={after['target']['counts']}")
-    print(f"after regression: exit={after['regression']['exit_code']} counts={after['regression']['counts']}")
-    for check in verdict["checks"]:
-        print(f"  [{'PASS' if check['ok'] else 'FAIL'}] {check['check']}: {check['detail']}")
-    print(f"evidence        : {out}")
     if args.json:
+        # machine-readable mode: stdout stays a single valid JSON document
         _print_json(summary)
+    else:
+        print(f"patch           : {patch_path}  sha256={summary['patch']['sha256'][:16]}…")
+        print(f"before target   : exit={before['target']['exit_code']} counts={before['target']['counts']}")
+        print(f"before regression: exit={before['regression']['exit_code']} counts={before['regression']['counts']}")
+        print(f"after target    : exit={after['target']['exit_code']} counts={after['target']['counts']}")
+        print(f"after regression: exit={after['regression']['exit_code']} counts={after['regression']['counts']}")
+        for check in verdict["checks"]:
+            print(f"  [{'PASS' if check['ok'] else 'FAIL'}] {check['check']}: {check['detail']}")
+        print(f"evidence        : {_rel(cfg, out)}")
     return 0 if verdict["ok"] else 1
 
 
@@ -630,7 +718,8 @@ def _live_generate_with_retry(cfg: ToolkitConfig, pack: dict[str, Any], args: ar
     for attempt in range(1, args.attempts + 1):
         turn_messages = list(messages)
         if feedback:
-            turn_messages = turn_messages + [
+            turn_messages = [
+                *turn_messages,
                 {"role": "assistant", "content": str(attempts[-1].get("raw_text", ""))[:20000]},
                 {"role": "user", "content": feedback},
             ]
@@ -752,6 +841,14 @@ def _live_generate_with_retry(cfg: ToolkitConfig, pack: dict[str, Any], args: ar
 
 def cmd_run(args: argparse.Namespace) -> int:
     cfg = _cfg()
+    patch_path = _patch_path(cfg, args.patch)
+    if not args.live and not patch_path.is_file():
+        raise SystemExit(
+            "replay mode needs a recorded patch, but it is missing:\n"
+            f"  {patch_path}\n"
+            "restore it with `git checkout -- minimax/patches/`, pass --patch FILE, "
+            "or generate a fresh change with `run --live` (needs MINIMAX_API_KEY)."
+        )
     if getattr(args, "fresh", False):
         for suffix in ("", "-wal", "-shm"):
             (cfg.pc_db_path.parent / (cfg.pc_db_path.name + suffix)).unlink(missing_ok=True)
@@ -759,7 +856,6 @@ def cmd_run(args: argparse.Namespace) -> int:
     store = _store(cfg)
     state = _state(cfg, args.scope_key)
     task_path = _task_path(cfg, args.task)
-    patch_path = _patch_path(cfg, args.patch)
 
     # 0. put the business project back into the pre-change state, so the context
     #    pack describes exactly the code the task starts from
@@ -963,6 +1059,7 @@ def cmd_reset(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="sddctx", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--version", action="version", version=f"sddctx {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("init", help="create the seekdb schema")
@@ -1045,7 +1142,19 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    return int(args.func(args))
+    try:
+        return int(args.func(args))
+    except StoreError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        print(
+            "hint: start seekdb (`systemctl start seekdb` or the docker image) or set "
+            "SEEKDB_HOST/SEEKDB_PORT; see docs/runbook.md",
+            file=sys.stderr,
+        )
+        return 2
+    except KeyboardInterrupt:
+        print("interrupted", file=sys.stderr)
+        return 130
 
 
 if __name__ == "__main__":

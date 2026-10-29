@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import ToolkitConfig
-from .protocols import Chunk, DocKind
+from .protocols import Chunk
 from .store import DOC_KINDS, MaterialStore
 
 #: ``### REQ-ORD-006 状态筛选（v2.0 新增）``
@@ -151,7 +151,7 @@ def _spec_chunks(specs_dir: Path, root: Path) -> list[Chunk]:
             )
             continue
 
-        for position, (start_index, symbol, title) in enumerate(headings):
+        for _position, (start_index, symbol, title) in enumerate(headings):
             end_index = len(lines)
             for probe in range(start_index + 1, len(lines)):
                 if _SECTION_BREAK.match(lines[probe]):
@@ -277,7 +277,9 @@ def _archive_path(archive_dir: Path | None) -> Path:
 
     ``archive_dir`` is the directory that holds the snapshots; callers such as
     the CLI pass ``data_dir/ingest``.  When omitted it defaults to
-    ``<data_dir>/ingest`` (``SDDCTX_DATA`` aware).
+    ``<data_dir>/ingest`` (``SDDCTX_DATA`` aware).  The timestamp includes
+    microseconds so two ingests in the same second never overwrite each
+    other's snapshot.
     """
 
     if archive_dir is not None:
@@ -285,7 +287,7 @@ def _archive_path(archive_dir: Path | None) -> Path:
     else:
         target = ToolkitConfig.from_env().data_dir / "ingest"
     target.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     return target / f"ingest-{stamp}.jsonl"
 
 
