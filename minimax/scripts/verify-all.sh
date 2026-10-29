@@ -29,14 +29,14 @@ banner "2/8 toolkit tests"
 banner "3/8 business project tests (committed post-change tree)"
 (cd demo && "$PYTHON" -m pytest -q)
 
-banner "4/8 full replay demo (ingest -> context -> patch -> verify -> state)"
+banner "4/8 evidence self-check on the committed evidence (patch/meta/records/context/state/logs/docs)"
+"$PYTHON" scripts/check-evidence.py
+
+banner "5/8 full replay demo (ingest -> context -> patch -> verify -> state)"
 bash scripts/demo.sh
 
-banner "5/8 spec-update demo (re-import a changed specification)"
+banner "6/8 spec-update demo (re-import a changed specification)"
 bash scripts/spec-update.sh
-
-banner "6/8 evidence self-check (patch/meta/records/context/state/logs/docs)"
-"$PYTHON" scripts/check-evidence.py
 
 banner "7/8 verification verdict"
 "$PYTHON" - <<'PY'

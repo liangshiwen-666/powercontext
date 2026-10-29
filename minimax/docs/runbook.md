@@ -121,7 +121,7 @@ python scripts/check-evidence.py
 ```
 
 > `check-evidence.py` 会逐项核对证据链并打印 `PASS/FAIL`（退出码 = 失败数）；
-> `verify-all.sh` 已把它作为第 6 步自动执行，因此"一条命令"即可完成全部核对。
+> `verify-all.sh` 已把它作为第 4 步（在重放演示之前，校验的是提交内的证据）自动执行，因此"一条命令"即可完成全部核对。
 
 > 提交树中的业务工程是**修改后**状态，所以直接 `pytest tests/target` 是 6 passed。
 > 想亲手看到"修改前 6 failed"，先执行 `python -m sddctx reset --demo`（把补丁反向应用），
