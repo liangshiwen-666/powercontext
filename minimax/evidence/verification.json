@@ -1,9 +1,9 @@
 {
   "schema": "sddctx.verification/v1",
-  "generated_at": "20261029T053613Z",
+  "generated_at": "20261029T065754Z",
   "patch": {
     "path": "patches/0001-orders-filters.patch",
-    "sha256": "81451f043aa315103fdf00a52e33cae212493bcfe629429854f757a320d99170"
+    "sha256": "ebdbe1c26d9b9a1460514e76362703f2f5e10727ab6adb37e3210904515641c0"
   },
   "tree_state": "after",
   "before": {
@@ -16,7 +16,7 @@
         "errors": 0,
         "skipped": 0
       },
-      "duration_s": 1.304,
+      "duration_s": 3.462,
       "log_path": "evidence/logs/before-target.json"
     },
     "regression": {
@@ -28,7 +28,7 @@
         "errors": 0,
         "skipped": 0
       },
-      "duration_s": 1.879,
+      "duration_s": 3.068,
       "log_path": "evidence/logs/before-regression.json"
     }
   },
@@ -42,7 +42,7 @@
         "errors": 0,
         "skipped": 0
       },
-      "duration_s": 1.082,
+      "duration_s": 2.757,
       "log_path": "evidence/logs/after-target.json"
     },
     "regression": {
@@ -54,7 +54,7 @@
         "errors": 0,
         "skipped": 0
       },
-      "duration_s": 1.378,
+      "duration_s": 3.24,
       "log_path": "evidence/logs/after-regression.json"
     }
   },

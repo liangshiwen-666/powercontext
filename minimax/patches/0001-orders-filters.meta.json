@@ -1,27 +1,27 @@
 {
   "schema": "sddctx.patch-generation/v1",
-  "generated_at": "20261029T053603Z",
+  "generated_at": "20261029T065730Z",
   "generation_mode": "live",
   "model": "MiniMax-M3.1-Flash",
   "endpoint": "https://api.minimax.cn/v1/chat/completions",
-  "context_pack": "evidence/context/orders-filters.task-20261029T053529Z.json",
-  "context_sha256": "538c848775f4102f08fec68fa3da6180d6fa22f7d7870846ed4a2baf767e00c3",
+  "context_pack": "evidence/context/orders-filters.task-20261029T065702Z.json",
+  "context_sha256": "bb51552443228f8eb58130741a8005bf8e6047fab08dffe5caa79a549f792cb9",
   "patch_path": "patches/0001-orders-filters.patch",
-  "patch_sha256": "81451f043aa315103fdf00a52e33cae212493bcfe629429854f757a320d99170",
+  "patch_sha256": "ebdbe1c26d9b9a1460514e76362703f2f5e10727ab6adb37e3210904515641c0",
   "attempts": [
     {
       "attempt": 1,
-      "response_sha256": "a77cbc87d71c5be5d5e4aa76ed01536831c084440afb55026f29cb471aaed6da",
+      "response_sha256": "783ebf09ce403005f698782e871efbf78e2b3573734e622d65c2c109ac8c38e9",
       "usage": {
-        "total_tokens": 11820,
+        "total_tokens": 9210,
         "total_characters": 0,
-        "prompt_tokens": 7491,
-        "completion_tokens": 4329,
+        "prompt_tokens": 6572,
+        "completion_tokens": 2638,
         "completion_tokens_details": {
-          "reasoning_tokens": 2020
+          "reasoning_tokens": 519
         },
         "prompt_tokens_details": {
-          "cached_tokens": 128
+          "cached_tokens": 0
         }
       },
       "finish_reason": "stop",
@@ -38,8 +38,8 @@
         "errors": 0,
         "skipped": 0
       },
-      "patch_sha256": "81451f043aa315103fdf00a52e33cae212493bcfe629429854f757a320d99170",
-      "record": "records/minimax/20261029T053601873005Z-orders-filters-attempt1.json"
+      "patch_sha256": "ebdbe1c26d9b9a1460514e76362703f2f5e10727ab6adb37e3210904515641c0",
+      "record": "records/minimax/20261029T065727192804Z-orders-filters-attempt1.json"
     }
   ]
 }

@@ -20,22 +20,25 @@ export SDDCTX_PYTHON="$PYTHON"
 
 banner() { printf '\n\033[1m== %s ==\033[0m\n' "$*"; }
 
-banner "1/7 environment"
+banner "1/8 environment"
 bash scripts/check-env.sh
 
-banner "2/7 toolkit tests"
+banner "2/8 toolkit tests"
 "$PYTHON" -m pytest tests -q
 
-banner "3/7 business project tests (committed post-change tree)"
+banner "3/8 business project tests (committed post-change tree)"
 (cd demo && "$PYTHON" -m pytest -q)
 
-banner "4/7 full replay demo (ingest -> context -> patch -> verify -> state)"
+banner "4/8 full replay demo (ingest -> context -> patch -> verify -> state)"
 bash scripts/demo.sh
 
-banner "5/7 spec-update demo (re-import a changed specification)"
+banner "5/8 spec-update demo (re-import a changed specification)"
 bash scripts/spec-update.sh
 
-banner "6/7 verification verdict"
+banner "6/8 evidence self-check (patch/meta/records/context/state/logs/docs)"
+"$PYTHON" scripts/check-evidence.py
+
+banner "7/8 verification verdict"
 "$PYTHON" - <<'PY'
 import json
 from pathlib import Path
@@ -51,8 +54,8 @@ print("patch_sha256   =", run["patch"]["sha256"])
 print("code_version   =", run["code_version"]["base_git_head"])
 PY
 
-banner "7/7 evidence inventory"
+banner "8/8 evidence inventory"
 find evidence records patches -type f | sort
 
 echo
-echo "VERIFY-ALL: PASS (see evidence/verification.json)"
+echo "VERIFY-ALL: PASS (see evidence/verification.json and scripts/check-evidence.py output)"

@@ -44,7 +44,6 @@ def list_orders_route(
         created_before,
     )
     min_amount_value = parse_min_amount(min_amount)
-
     return list_orders(
         request.app.state.repo,
         user_id,

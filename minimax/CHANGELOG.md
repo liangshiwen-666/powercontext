@@ -7,7 +7,15 @@ initial delivery (commit `62ae7f1`). Full feasibility audit: [docs/audit-v1.md](
 ## V1 — 1.0.0 (2026-10-29)
 
 首个正式版本（Version 1）。对 `minimax/` 全部文件做了可行性审计（5 条并行工作流：CLI/上下文/脚本/集成 +
-seekdb 资料层 + 补丁/验证层 + PowerContext 状态层 + 文档/证据/安装矩阵），修复 15 项缺陷并补齐验证。
+seekdb 资料层 + 补丁/验证层 + PowerContext 状态层 + 文档/证据/安装矩阵），修复 16 项缺陷并补齐验证。
+
+### V1 收尾补充（同日）
+
+- 新增 `scripts/check-evidence.py`：91 项只读证据链自检（patch ↔ meta ↔ MiniMax 记录 ↔ 上下文 ↔
+  日志/JUnit ↔ 快照 ↔ PowerContext 状态 ↔ 文档），退出码 = 失败数；已接入 `verify-all.sh` 第 6 步。
+- 修复 DB 证据"一次查询返回三类资料"：原 UNION 三个分支共用同一组关键词，实际只命中 spec；现按
+  kind 使用各自命中的关键词（spec=需求中文词 / code=符号名 / test=测试函数名），一条语句稳定返回三类。
+- 用真实 MiniMax 调用重新生成 V1 证据（1 次成功；patch sha `ebdbe1c2…`），并重新生成快照/规格对比/状态读回。
 
 ### 可运行性（P0）
 

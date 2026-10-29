@@ -29,7 +29,7 @@
 | `records/db/` | seekdb 建表与检索 SQL 记录（真实执行输出） |
 | `records/powercontext/` | 任务状态写入记录 + **新进程**读回记录（`state-readback.json`） |
 | `evidence/` | 上下文包、before/after 代码快照、测试日志（命令/退出码/代码版本/testcase 集合）、验证结论、规格更新对比 |
-| `scripts/` | `setup.sh` / `verify-all.sh` / `demo.sh` / `spec-update.sh` / `state-readback.sh` / `check-env.sh` / `live-generate.sh` / `lint.sh` / `reset.sh` / `diff_context.py` |
+| `scripts/` | `setup.sh` / `verify-all.sh` / `check-evidence.py` / `demo.sh` / `spec-update.sh` / `state-readback.sh` / `check-env.sh` / `live-generate.sh` / `lint.sh` / `reset.sh` / `diff_context.py` |
 | `docs/` | [运行说明](docs/runbook.md) · [验证样例](docs/sample.md) · [一页技术说明](docs/tech-note.md) · [V1 审计报告](docs/audit-v1.md) |
 
 ## 快速开始（评审复现）

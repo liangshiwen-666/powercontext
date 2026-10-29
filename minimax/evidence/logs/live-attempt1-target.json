@@ -3,8 +3,8 @@
   "suite": "tests/target",
   "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/target -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/live-attempt1-target.junit.xml",
   "cwd": "/mnt/d/oceanbase/work-eco/repo/minimax/demo",
-  "started_at": "2026-10-29T05:36:02Z",
-  "duration_s": 1.175,
+  "started_at": "2026-10-29T06:57:27Z",
+  "duration_s": 2.731,
   "timed_out": false,
   "exit_code": 0,
   "counts": {
@@ -24,10 +24,10 @@
   ],
   "testcase_count": 6,
   "code_version": {
-    "base_git_head": "62ae7f1729b68f10956f26a7f851bcd99b7ee6f7",
+    "base_git_head": "16ec7a5a806af93952aa42d169dac857028a0bdf",
     "tree_state": "live-attempt"
   },
-  "stdout": "......                                                                   [100%]\n6 passed in 0.33s\n",
-  "stdout_sha256": "7910c4bc2f96d85dac2302aa9be0ebcc503449d857d4a908140cf5d9d7e2319c",
+  "stdout": "......                                                                   [100%]\n6 passed in 0.77s\n",
+  "stdout_sha256": "58534047716b62ee112646df49c87926ffa6271e17aa4efa033155c818aca809",
   "stderr": ""
 }

@@ -3,8 +3,8 @@
   "suite": "tests/regression",
   "command": "/home/liangshiwen/.venvs/clean/bin/python -m pytest tests/regression -q --tb=short --junitxml=/mnt/d/oceanbase/work-eco/repo/minimax/evidence/logs/after-regression.junit.xml",
   "cwd": "/mnt/d/oceanbase/work-eco/repo/minimax/demo",
-  "started_at": "2026-10-29T05:36:09Z",
-  "duration_s": 1.378,
+  "started_at": "2026-10-29T06:57:44Z",
+  "duration_s": 3.24,
   "timed_out": false,
   "exit_code": 0,
   "counts": {
@@ -36,11 +36,11 @@
   ],
   "testcase_count": 18,
   "code_version": {
-    "base_git_head": "62ae7f1729b68f10956f26a7f851bcd99b7ee6f7",
-    "patch_sha256": "81451f043aa315103fdf00a52e33cae212493bcfe629429854f757a320d99170",
+    "base_git_head": "16ec7a5a806af93952aa42d169dac857028a0bdf",
+    "patch_sha256": "ebdbe1c26d9b9a1460514e76362703f2f5e10727ab6adb37e3210904515641c0",
     "tree_state": "after"
   },
-  "stdout": "..................                                                       [100%]\n18 passed in 0.47s\n",
-  "stdout_sha256": "49675a6a8d90f5a69033379a43757eea5c03a277003a20e3d68c52ed44850995",
+  "stdout": "..................                                                       [100%]\n18 passed in 1.03s\n",
+  "stdout_sha256": "d813f1aa8d50161528baf618f053feaeede577ce4f03da3f613040475dcdf32e",
   "stderr": ""
 }

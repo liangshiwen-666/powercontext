@@ -132,19 +132,21 @@ def _collect_db_evidence(cfg: ToolkitConfig, label: str) -> Path:
         (
             "retrieval_code",
             "SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
-            "ROUND(MATCH(body) AGAINST('status created_after min_amount 筛选 校验 参数'), 4) AS score "
-            "FROM ctx_doc WHERE MATCH(body) AGAINST('status created_after min_amount 筛选 校验 参数') "
+            "ROUND(MATCH(body) AGAINST('list_orders parse_pagination status created_after min_amount'), 4) AS score "
+            "FROM ctx_doc WHERE MATCH(body) AGAINST('list_orders parse_pagination status created_after min_amount') "
             "AND kind = 'code' ORDER BY score DESC LIMIT 5",
         ),
         (
             "retrieval_tests",
             "SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
-            "ROUND(MATCH(body) AGAINST('筛选 状态 时间范围 金额下限 INVALID_FILTER 测试'), 4) AS score "
-            "FROM ctx_doc WHERE MATCH(body) AGAINST('筛选 状态 时间范围 金额下限 INVALID_FILTER 测试') "
+            "ROUND(MATCH(body) AGAINST('test_filter_by_status test_filters_compose test_filter_by_min_amount'), 4) AS score "
+            "FROM ctx_doc WHERE MATCH(body) AGAINST('test_filter_by_status test_filters_compose test_filter_by_min_amount') "
             "AND kind = 'test' ORDER BY score DESC LIMIT 5",
         ),
         (
-            # one statement that returns spec + code + test rows (per-kind quota)
+            # one statement that returns spec + code + test rows: each UNION branch
+            # uses the keywords that actually hit its own document kind (a shared
+            # keyword set only matches specs for this task, see docs/audit-v1.md §2)
             "retrieval_all_kinds",
             "SELECT kind, citation, score FROM ("
             "  (SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
@@ -153,13 +155,13 @@ def _collect_db_evidence(cfg: ToolkitConfig, label: str) -> Path:
             "   AND kind = 'spec' ORDER BY score DESC LIMIT 2) "
             "  UNION ALL "
             "  (SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
-            "     ROUND(MATCH(body) AGAINST('筛选 状态 时间范围 金额下限'), 4) AS score "
-            "   FROM ctx_doc WHERE MATCH(body) AGAINST('筛选 状态 时间范围 金额下限') "
+            "     ROUND(MATCH(body) AGAINST('list_orders parse_pagination status created_after min_amount'), 4) AS score "
+            "   FROM ctx_doc WHERE MATCH(body) AGAINST('list_orders parse_pagination status created_after min_amount') "
             "   AND kind = 'code' ORDER BY score DESC LIMIT 2) "
             "  UNION ALL "
             "  (SELECT kind, CONCAT(path, ':', line_start, '-', line_end) AS citation, "
-            "     ROUND(MATCH(body) AGAINST('筛选 状态 时间范围 金额下限'), 4) AS score "
-            "   FROM ctx_doc WHERE MATCH(body) AGAINST('筛选 状态 时间范围 金额下限') "
+            "     ROUND(MATCH(body) AGAINST('test_filter_by_status test_filters_compose test_filter_by_min_amount'), 4) AS score "
+            "   FROM ctx_doc WHERE MATCH(body) AGAINST('test_filter_by_status test_filters_compose test_filter_by_min_amount') "
             "   AND kind = 'test' ORDER BY score DESC LIMIT 2) "
             ") AS merged ORDER BY kind, score DESC",
         ),

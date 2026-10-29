@@ -28,5 +28,5 @@ diff -r "$TMP/demo/app" evidence/snapshots/before/app   # 应无差异
 
 | 文件 | before | after |
 |---|---|---|
-| `app/service.py` | `8bd43ebebb15367b48d16a1c1ab14e1d738c172da435ba420fcca21bd855d445` | `6c0fbc33897e52df1636094424ece1aba4d5da9acbfcb599484336e563aaecb1` |
-| `app/routes.py` | `8a4c1eb396be32246e3bc1828920c943e98ff8f1a064c10285adce34d50c5935` | `495d9c7077403f075e0c59ef9adfd2f9707a7385cd683128da872099818abd3d` |
+| `app/service.py` | `8bd43ebebb15367b48d16a1c1ab14e1d738c172da435ba420fcca21bd855d445` | `9b9dd1df25bb32cf29f6d364a58808081f9e8fdeb3ae6a338eb9451e5bb182c3` |
+| `app/routes.py` | `8a4c1eb396be32246e3bc1828920c943e98ff8f1a064c10285adce34d50c5935` | `f7317a885d34c74d203635e015717245448ab6dd0a329daf31d09a43e9cb4fd0` |

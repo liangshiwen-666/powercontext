@@ -115,7 +115,13 @@ cd demo && python -m pytest -q                     # 全绿（24 passed）
 
 # 上下文模块自身的单元测试（V1：141 passed / 2 skipped，见 audit-v1.md）
 python -m pytest tests -q
+
+# 证据链自检（patch ↔ meta ↔ records ↔ 上下文 ↔ 日志 ↔ 快照 ↔ 文档，只读，约 2 秒）
+python scripts/check-evidence.py
 ```
+
+> `check-evidence.py` 会逐项核对证据链并打印 `PASS/FAIL`（退出码 = 失败数）；
+> `verify-all.sh` 已把它作为第 6 步自动执行，因此"一条命令"即可完成全部核对。
 
 > 提交树中的业务工程是**修改后**状态，所以直接 `pytest tests/target` 是 6 passed。
 > 想亲手看到"修改前 6 failed"，先执行 `python -m sddctx reset --demo`（把补丁反向应用），

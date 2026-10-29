@@ -9,7 +9,7 @@
 
 | 维度 | 结论 |
 |---|---|
-| 交付完整性 | `minimax/` 共 **97 个受控文件**（44 个 Python 文件 / 9,947 行；文档 13 个 / 约 1,100 行），覆盖题面六类提交材料 |
+| 交付完整性 | `minimax/` 共 **98 个受控文件**（45 个 Python 文件 / 10,343 行；文档 13 个 / 1,142 行），覆盖题面六类提交材料 |
 | 可运行性 | 干净副本上 `setup.sh → verify-all.sh` 全流程 PASS（无需 API Key）；`demo.sh` 重放演示 PASS |
 | 版本可行性 | Python **3.12 / 3.13 / 3.14** 实测均可安装并跑通（**3.11 不可行**：lock 内 `numpy 2.5.4` 要求 ≥3.12） |
 | 技术真实性 | MiniMax 真实调用（1 次成功生成）、seekdb 真实建表/检索、PowerContext 真实写入 + 新进程读回，证据链可重算 |
@@ -84,7 +84,8 @@ PowerContext 状态层、文档/证据/安装矩阵）。专项审计的原始�
 | 脚本 | 作用 | 可行性 / V1 处理 |
 |---|---|---|
 | `setup.sh` | 安装 + 预检 + 建表 | 实测；V1 修 P0：Python ≥3.12 校验、venv/ensurepip 失败时 `uv venv --seed` 回退、无 uv 时给出可操作提示 |
-| `verify-all.sh` | 一条命令全量验证 | 实测（干净副本 PASS）；V1 新增 |
+| `verify-all.sh` | 一条命令全量验证（含证据自检） | 实测（干净副本 + 团队仓库 clone 均 PASS）；V1 新增 |
+| `check-evidence.py` | 证据链只读自检（91 项，退出码=失败数） | 实测：91 passed / 0 failed；V1 新增 |
 | `demo.sh` | 端到端重放演示 | 实测；V1 修 P0：解释器路径绝对化；横幅编号统一 |
 | `spec-update.sh` | 规格更新重导入演示 | 实测；ingest JSON 落 `evidence/ingest/`（合法 JSON） |
 | `state-readback.sh` | 新进程读回状态 | 实测（10 条记录，prepared ready） |
@@ -131,7 +132,7 @@ PowerContext 状态层、文档/证据/安装矩阵）。专项审计的原始�
 | 12 | **P1** | `records/minimax/index.jsonl` 记录绝对路径（不可移植）；`ingest --json` 混入人类摘要导致 `ingest-v*.json` 非法 JSON；DB 证据 schema 拼写 `sendb` | 路径相对化；`--json` 输出纯 JSON；schema 改 `seekdb-evidence/v1`；`ingest --json` 单文档 | 证据重生成后 JSON 校验通过 |
 | 13 | **P1** | `context` 的 `state.db_path` 用绝对路径 → `context_sha256` 无法跨机复算 | 改为相对 `minimax/` 根 | 同输入两次运行 sha 一致；干净副本与仓库一致 |
 | 14 | **P1** | 两个 pytest 进程共用 `sddctx_test` 库互相干扰（曾导致偶发失败） | 每进程独立库 `sddctx_test_<pid>` + 会话末 DROP | 并发 2 进程各 51 passed；无残留库 |
-| 15 | **P2** | 文档数字/措辞不一致（banner 编号、脚本清单、docker tag、`.gitkeep` 断言、before 数字前提、§6.1 版本对应语义、tech-note 图注、`sendb` 笔误、多类检索只返回 spec） | 逐项修正；`records/db` 增加按类型检索 + 三类 `UNION ALL`；`records/README` 说明绝对路径属环境信息 | 文档复核 + 本次证据重生成 |
+| 15 | **P2** | 文档数字/措辞不一致（banner 编号、脚本清单、docker tag、`.gitkeep` 断言、before 数字前提、§6.1 版本对应语义、tech-note 图注、`sendb` 笔误）；DB 证据的"三类联合检索"分支共用同一组关键词 → 实际只命中 spec | 逐项修正文档；**每个 UNION 分支改用各自命中的关键词**（spec 用中文需求词、code 用符号名、test 用测试函数名），现在一条语句稳定返回 spec/code/test 三类；`records/README` 说明绝对路径属环境信息；新增 `scripts/check-evidence.py` 自动核对证据链 | 自检 91 项 0 失败；`retrieval_all_kinds` 实测返回 3 种 kind |
 
 ## 3. 验证矩阵（V1 最终状态）
 
@@ -142,13 +143,15 @@ PowerContext 状态层、文档/证据/安装矩阵）。专项审计的原始�
 | 业务工程 | `cd demo && python -m pytest -q` | **24 passed**（target 6 + regression 18） |
 | 修改前/后矩阵 | `python -m sddctx verify`（或 `run`） | before target 6 failed / regression 18 passed；after 6+18 passed；6 项检查全 PASS |
 | 干净副本全流程 | `setup.sh` → `verify-all.sh`（`/tmp/v1-review`） | **exit 0，VERIFY-ALL: PASS**（无 API Key） |
+| 团队仓库全新 clone | sparse clone `powercontext-fork@提交commit` → `setup.sh`（3.14 宿主走 uv 回退）→ `verify-all.sh` | **exit 0，VERIFY-ALL: PASS**（head/树哈希与本地一致） |
+| 证据链自检 | `python scripts/check-evidence.py` | **91 passed / 0 failed** |
 | setup.sh 降级路径 | `PYTHON=python3`（3.14 无 ensurepip） | 有 uv：exit 0（自动回退）；无 uv：exit 2 + 安装提示 |
 | 测试隔离 | 两个并发 `pytest tests/test_store.py tests/test_ingest.py` | 各 51 passed，互不影响 |
 | CLI 错误路径 | seekdb 不可达 / 补丁缺失 / 空上下文 / 未知命令 | 无 traceback，非零退出 + 可操作提示 |
 | 上下文确定性 | `context` 连跑两次 | 同 sha（`6a686d74…`）；`state.db_path` 为相对路径 |
 | citation 真实性 | 解析 `evidence/run.json` 引用包的 43 条 citation | 43/43 在对应树内可解析 |
 | JSON 合法性 | 遍历全部 `evidence/`、`records/` JSON | 全部可 `json.load` |
-| 证据哈希链 | patch/meta/records/run/verification 交叉重算 | patch sha 三处一致（`81451f04…`）；响应 sha、上下文 sha 可重算 |
+| 证据哈希链 | patch/meta/records/run/verification 交叉重算 | patch sha 四处一致（`ebdbe1c2…`）；响应 sha、上下文 sha 可重算（由 `scripts/check-evidence.py` 自动校验） |
 | 快照一致性 | `snapshots/before` + patch → `snapshots/after` | 逐字节一致；`after` == `demo/app` |
 
 ## 4. 证据链核对方法（评审可复跑）
@@ -212,6 +215,7 @@ bash scripts/demo.sh             # 重放 MiniMax 记录的修改并验证（无
 bash scripts/spec-update.sh      # 规格更新 → 上下文 A/B 变化
 bash scripts/state-readback.sh   # 新进程读回任务状态
 python -m pytest tests -q        # 模块单测
+python scripts/check-evidence.py # 证据链自检（91 项，只读）
 cd demo && python -m pytest -q   # 业务工程测试
 
 # 3. 现场重新生成（需要 Key）
